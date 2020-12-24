@@ -85,6 +85,7 @@ public:
 
     virtual int Put(const inode_id_t key, const Slice &fname, const inode_id_t value);
     virtual int Get(const inode_id_t key, const Slice &fname, inode_id_t &value);
+    virtual int Delete(const inode_id_t key, const Slice &fname);
     virtual Iterator* DirHashTableGetIterator(const inode_id_t target);
 
     virtual void SetFirstHashCapacity(uint64_t size) { first_hash_capacity_ = size; }
@@ -101,11 +102,14 @@ private:
     uint64_t first_hash_capacity_;  //二级hash才会用到
 
 
+    bool IsSecondHashEntry(NvmHashEntry *entry);
     void GetVersionAndRefByWrite(bool &is_rehash, HashVersion **version);
     void GetVersionAndRefByRead(bool &is_rehash, HashVersion **version, HashVersion **rehash_version);
-    uint64_t hash_id(const inode_id_t key, const uint64_t capacity);
-    int HashEntryInsetKV(NvmHashEntry *entry, const inode_id_t key, const Slice &fname, inode_id_t &value);
-    void HashEntryDealWithOp(NvmHashEntry *entry, LinkListOp &op);
+    uint32_t hash_id(const inode_id_t key, const uint64_t capacity);
+    int HashEntryInsetKV(HashVersion *verison, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
+    void HashEntryDealWithOp(HashVersion *verison, uint32_t index, LinkListOp &op);
+    int HashEntryGetKV(HashVersion *verison, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
+    int HashEntryDeleteKV(HashVersion *verison, uint32_t index, const inode_id_t key, const Slice &fname);
 };
 
 

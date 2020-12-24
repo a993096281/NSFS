@@ -28,6 +28,10 @@ int MetaDB::DirGet(const inode_id_t key, const Slice &fname, inode_id_t &value){
     return dir_db_->DirGet(key, fname, value);
 }
 
+int MetaDB::DirDelete(const inode_id_t key, const Slice &fname){
+    return dir_db_->DirDelete(key, fname);
+}
+
 Iterator* MetaDB::DirGetIterator(const inode_id_t target){
     return dir_db_->DirGetIterator(target);
 }

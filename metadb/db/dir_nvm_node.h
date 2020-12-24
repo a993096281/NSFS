@@ -20,6 +20,8 @@ static const uint32_t LINK_NODE_CAPACITY = DIR_LINK_NODE_SIZE - 40;
 static const uint32_t INDEX_NODE_CAPACITY = (DIR_BPTREE_INDEX_NODE_SIZE - 32) / sizeof(struct IndexNodeEntry);
 static const uint32_t LEAF_NODE_CAPACITY = DIR_BPTREE_LEAF_NODE_SIZE - 24;
 
+static const uint32_t LINK_NODE_TRIG_MERGE_SIZE = (LINK_NODE_CAPACITY / 2) - 44;  //LinkNode 触发merge的大小; 减去的是一个KV的长度（假设fname为8）
+
 enum class DirNodeType : uint8_t {
     UNKNOWN_TYPE = 0,
     LINKNODE_TYPE = 1,
@@ -43,8 +45,16 @@ struct LinkNode {
     LinkNode() {}
     ~LinkNode() {}
 
+    void CopyBy(LinkNode * dst){
+        node_allocator->nvm_memcpy_nodrain(this, dst, sizeof(LinkNode));
+    }
+
     uint32_t GetFreeSpace() {
         return LINK_NODE_CAPACITY - len;
+    }
+
+    void DecodeBufGetKey(uint32_t offset, inode_id_t &key){
+        key = *static_cast<inode_id_t *>(buf + offset);
     }
 
     void DecodeBufGetKeyNumLen(uint32_t offset, inode_id_t &key, uint32_t &key_num, uint32_t &key_len){
@@ -126,6 +136,7 @@ struct LinkNode {
         node_allocator->nvm_memmove_nodrain(buf + offset, ptr, len);
     }
 
+
 };
 struct IndexNodeEntry {
     uint64_t key;
@@ -156,24 +167,31 @@ struct BptreeLeafNode {
 ////// LinkList 操作
 struct LinkListOp {
     pointer_t root;   //输入的root节点
-    vector<pointer_t> free_list;   //待删除的节点
+    vector<pointer_t> add_linknode_list;
+    vector<pointer_t> free_linknode_list;   //待删除的节点
+    
     pointer_t res;  //返回的节点
-    uint32_t add_node_num; //新增的节点
-    uint32_t delete_node_num;
 
-    LinkListOp() : root(0), res(0), add_node_num(0), delete_node_num(0) {
-        free_list.reserve(3);   //猜测大部分不超过3，
+    LinkListOp() : root(0), res(0) {
+        add_linknode_list.reserve(3); //猜测大部分不超过3，
+        free_linknode_list.reserve(3);   //猜测大部分不超过3，
     }
     ~LinkListOp() {}
 };
 
 LinkNode *AllocLinkNode();
 int LinkListInsert(LinkListOp &op, const inode_id_t key, const Slice &fname, const inode_id_t value);
-
+int LinkListGet(LinkNode *root, const inode_id_t key, const Slice &fname, inode_id_t &value);
+int LinkListDelete(LinkListOp &op, const inode_id_t key, const Slice &fname);
 
 //////
 
+////// bptree 操作
 
+
+
+
+//////
 } // namespace name
 
 

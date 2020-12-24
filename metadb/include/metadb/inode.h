@@ -8,8 +8,9 @@
 #define _METADB_INODE_H_
 
 #include <stdint.h>
-
+#define INVALID_INODE_ID_KEY  0
 #define MAX_INODE_ID_KEY UINT64_MAX
+#define MAX_FNAME_LEN 180
 
 namespace metadb {
 

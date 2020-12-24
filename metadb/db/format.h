@@ -19,9 +19,9 @@
 #define IS_INVALID_POINTER(offset) (offset == INVALID_POINTER)
 #define IS_SECOND_HASH_POINTER(offset) (offset & SECOND_HASH_POINTER)
 
-#define DIR_LINK_NODE_SIZE  256
+#define DIR_LINK_NODE_SIZE  512
 #define DIR_BPTREE_INDEX_NODE_SIZE  256
-#define DIR_BPTREE_LEAF_NODE_SIZE  512
+#define DIR_BPTREE_LEAF_NODE_SIZE  1024
 
 
 #define NODE_GET_OFFSET(det) (static_cast<char *>(det) - metadb::node_pool_pointer)

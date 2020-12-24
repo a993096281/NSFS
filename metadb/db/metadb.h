@@ -20,10 +20,12 @@ public:
 
     virtual int DirPut(const inode_id_t key, const Slice &fname, const inode_id_t value);
     virtual int DirGet(const inode_id_t key, const Slice &fname, inode_id_t &value);
+    virtual int DirDelete(const inode_id_t key, const Slice &fname);
     virtual Iterator* DirGetIterator(const inode_id_t target);
 
     virtual int InodePut(const inode_id_t key, const Slice &value);
     virtual int InodeGet(const inode_id_t key, std::string &value);
+    virtual int InodeDelete(const inode_id_t key);
 private:
     DirDB *dir_db_;
     InodeDB *inode_db_;

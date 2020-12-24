@@ -23,6 +23,7 @@ public:
 
     virtual int DirPut(const inode_id_t key, const Slice &fname, const inode_id_t value);
     virtual int DirGet(const inode_id_t key, const Slice &fname, inode_id_t &value);
+    virtual int DirDelete(const inode_id_t key, const Slice &fname);
     virtual Iterator* DirGetIterator(const inode_id_t target);
 private:
     
