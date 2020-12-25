@@ -23,6 +23,8 @@
 #define DIR_BPTREE_INDEX_NODE_SIZE  256
 #define DIR_BPTREE_LEAF_NODE_SIZE  1024
 
+#define MAX_DIR_BPTREE_LEVEL 8
+
 
 #define NODE_GET_OFFSET(det) (static_cast<char *>(det) - metadb::node_pool_pointer)
 #define NODE_GET_POINTER(offset) (metadb::node_pool_pointer + det)

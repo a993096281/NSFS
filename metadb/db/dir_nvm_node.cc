@@ -663,4 +663,67 @@ int LinkListDelete(LinkListOp &op, const inode_id_t key, const Slice &fname){
     return LinkNodeDelete(op, del_node, key, fname);
 }
 
+////// bptree
+BptreeIndexNode *AllocBptreeIndexNode(){
+    BptreeIndexNode *node = static_cast<BptreeIndexNode *>(node_allocator->AllocateAndInit(DIR_BPTREE_INDEX_NODE_SIZE, 0));
+    node->SetTypeNodrain(DirNodeType::BPTREEINDEXNODE_TYPE);
+    return node;
+}
+
+BptreeLeafNode *AllocBptreeLeafNode(){
+    BptreeLeafNode *node = static_cast<BptreeLeafNode *>(node_allocator->AllocateAndInit(DIR_BPTREE_LEAF_NODE_SIZE, 0));
+    node->SetTypeNodrain(DirNodeType::BPTREELEAFNODE_TYPE);
+    return node;
+}
+
+struct BptreeIndexNodeSearch {  //中间节点查找的路径
+    pointer_t node;
+    uint32_t index;   //中间节点为index， 
+
+    BptreeIndexNodeSearch() : node(INVALID_POINTER), index(0) {}
+    ~BptreeIndexNodeSearch() {}
+}
+
+struct BptreeSearchResult {
+    bool key_find;
+    uint32_t index_level; //Bptree index搜索层数,0代表没有中间节点
+    BptreeIndexNodeSearch path[MAX_DIR_BPTREE_LEVEL];  //中间层搜索路径
+    pointer_t leaf_node;       //叶子节点查找结果
+    uint32_t leaf_key_offset;  //叶子节点查找结果
+    uint32_t leaf_value_len;   //叶子节点查找结果
+    
+
+    BptreeSearchResult() : key_find(false), index_level(0), leaf_node(INVALID_POINTER), leaf_key_offset(0), leaf_value_len(0) {}
+    ~BptreeSearchResult() {}
+}
+
+bool IsIndexNode(pointer_t ptr){
+    uint8_t type = *static_cast<uint8_t *>(NODE_GET_POINTER(ptr));
+    return type == DirNodeType::BPTREEINDEXNODE_TYPE;
+}
+
+
+int BptreeSearch(BptreeSearchResult &res, pointer_t root, const uint64_t hash_key) {
+    pointer_t cur = root;
+    while(!IS_INVALID_POINTER(cur)){
+        if(IsIndexNode(cur)){  //中间节点查找
+            
+        }
+        else{    //叶子节点查找
+
+        }
+    }
+}
+
+int BptreeInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, const inode_id_t value){
+    BptreeSearchResult res;
+
+}
+
+int BptreeGet(pointer_t root, const uint64_t hash_key, const Slice &fname, inode_id_t &value);
+int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname);
+
+
+//////
+
 } // namespace name

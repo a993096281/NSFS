@@ -16,6 +16,8 @@ using namespace std;
 
 namespace metadb {
 
+struct IndexNodeEntry;
+
 static const uint32_t LINK_NODE_CAPACITY = DIR_LINK_NODE_SIZE - 40;
 static const uint32_t INDEX_NODE_CAPACITY = (DIR_BPTREE_INDEX_NODE_SIZE - 32) / sizeof(struct IndexNodeEntry);
 static const uint32_t LEAF_NODE_CAPACITY = DIR_BPTREE_LEAF_NODE_SIZE - 24;
@@ -25,8 +27,10 @@ static const uint32_t LINK_NODE_TRIG_MERGE_SIZE = (LINK_NODE_CAPACITY / 2) - 44;
 enum class DirNodeType : uint8_t {
     UNKNOWN_TYPE = 0,
     LINKNODE_TYPE = 1,
-    BPTREEINDEXNODE_TYPE,
-    BPTREELEAFNODE_TYPE
+    BPTREEINDEXNODE_TYPE,  //bptree 中间节点
+    BPTREELEAFNODE_TYPE,   //bptree 叶节点
+    //BPTREEROOTINDEXNODE_TYPE,  //bptree 即是root节点， 也是中间节点
+   // BPTREEROOTLEAFNODE_TYPE,   //bptree 即是root节点， 也是叶节点
 };
 
 struct LinkNode {
@@ -83,22 +87,18 @@ struct LinkNode {
         node_allocator->nvm_memcpy_persist(&type, &t, 1);
     }
 
-    struct NumLen {
-        uint16_t num;
-        uint32_t len;
-
-        NumLen(uint16_t a, uint32_t b) : num(a), len(b) {}
-        ~NumLen() {}
-    };
-
     void SetNumAndLenPersist(uint16_t a, uint32_t b){
-        NumLen nl(a,b);
-        node_allocator->nvm_memmove_persist(&num, &nl, 3);
+        char buff[6];
+        memcpy(buff, &a, 2);
+        memcpy(buff + 2, &b, 4);
+        node_allocator->nvm_memmove_persist(&num, buff, 6);
     }
 
     void SetNumAndLenNodrain(uint16_t a, uint32_t b){
-        NumLen nl(a,b);
-        node_allocator->nvm_memcpy_nodrain(&num, &nl, 3);
+        char buff[6];
+        memcpy(buff, &a, 2);
+        memcpy(buff + 2, &b, 4);
+        node_allocator->nvm_memcpy_nodrain(&num, buff, 6);
     }
 
     void SetMinkeyPersist(inode_id_t key){
@@ -147,11 +147,63 @@ struct BptreeIndexNode {
     uint8_t type;
     uint8_t padding;
     uint16_t num;
-    uint32_t len;
+    uint32_t len;    //len没用
     uint64_t magic_number; //暂时没用，充当padding；
     pointer_t prev;
     pointer_t next;
     struct IndexNodeEntry entry[INDEX_NODE_CAPACITY];
+
+    BptreeIndexNode() {}
+    ~BptreeIndexNode() {}
+
+    void CopyBy(BptreeIndexNode * dst){
+        node_allocator->nvm_memcpy_nodrain(this, dst, sizeof(BptreeIndexNode));
+    }
+
+    uint32_t GetFreeSpace() {
+        return INDEX_NODE_CAPACITY - num;
+    }
+
+    void Flush(){
+        node_allocator->nvm_persist(this, sizeof(BptreeIndexNode));
+    }
+
+    void SetTypeNodrain(DirNodeType t){
+        node_allocator->nvm_memcpy_nodrain(&type, &t, 1);
+    }
+    void SetTypePersist(DirNodeType t){
+        node_allocator->nvm_memcpy_persist(&type, &t, 1);
+    }
+
+    void SetNumPersist(uint16_t a){
+        node_allocator->nvm_memmove_persist(&num, &a, 2);
+    }
+
+    void SetNumNodrain(uint16_t a){
+        node_allocator->nvm_memcpy_nodrain(&num, &a, 2);
+    }
+
+    void SetPrevPersist(pointer_t ptr){
+        node_allocator->nvm_memcpy_persist(&prev, &ptr, sizeof(pointer_t));
+    }
+    void SetPrevNodrain(pointer_t ptr){
+        node_allocator->nvm_memcpy_nodrain(&prev, &ptr, sizeof(pointer_t));
+    }
+
+    void SetNextPersist(pointer_t ptr){
+        node_allocator->nvm_memcpy_persist(&next, &ptr, sizeof(pointer_t));
+    }
+    void SetNextNodrain(pointer_t ptr){
+        node_allocator->nvm_memcpy_nodrain(&next, &ptr, sizeof(pointer_t));
+    }
+
+    void SetEntryPersist(uint32_t offset, const void *ptr, uint32_t len){
+        node_allocator->nvm_memmove_persist(entry + offset, ptr, len);
+    }
+    void SetEntryNodrain(uint32_t offset, const void *ptr, uint32_t len){
+        node_allocator->nvm_memmove_nodrain(entry + offset, ptr, len);
+    }
+
 };
 
 struct BptreeLeafNode {
@@ -162,6 +214,63 @@ struct BptreeLeafNode {
     pointer_t prev;
     pointer_t next;
     char buf[LEAF_NODE_CAPACITY];      //key1,value1,key2,value2:   |--key1(8B)--|--value_len(4B)--|--value()--|--key2(8B)--|--value_len(4B)--|--value()--|
+
+    BptreeLeafNode() {}
+    ~BptreeLeafNode() {}
+
+    void CopyBy(BptreeLeafNode * dst){
+        node_allocator->nvm_memcpy_nodrain(this, dst, sizeof(BptreeLeafNode));
+    }
+
+    uint32_t GetFreeSpace() {
+        return LEAF_NODE_CAPACITY - len;
+    }
+
+    void Flush(){
+        node_allocator->nvm_persist(this, sizeof(BptreeLeafNode));
+    }
+
+    void SetTypeNodrain(DirNodeType t){
+        node_allocator->nvm_memcpy_nodrain(&type, &t, 1);
+    }
+    void SetTypePersist(DirNodeType t){
+        node_allocator->nvm_memcpy_persist(&type, &t, 1);
+    }
+
+    void SetNumAndLenPersist(uint16_t a, uint32_t b){
+        char buff[6];
+        memcpy(buff, &a, 2);
+        memcpy(buff + 2, &b, 4);
+        node_allocator->nvm_memmove_persist(&num, buff, 6);
+    }
+
+    void SetNumAndLenNodrain(uint16_t a, uint32_t b){
+        char buff[6];
+        memcpy(buff, &a, 2);
+        memcpy(buff + 2, &b, 4);
+        node_allocator->nvm_memcpy_nodrain(&num, buff, 6);
+    }
+
+    void SetPrevPersist(pointer_t ptr){
+        node_allocator->nvm_memcpy_persist(&prev, &ptr, sizeof(pointer_t));
+    }
+    void SetPrevNodrain(pointer_t ptr){
+        node_allocator->nvm_memcpy_nodrain(&prev, &ptr, sizeof(pointer_t));
+    }
+
+    void SetNextPersist(pointer_t ptr){
+        node_allocator->nvm_memcpy_persist(&next, &ptr, sizeof(pointer_t));
+    }
+    void SetNextNodrain(pointer_t ptr){
+        node_allocator->nvm_memcpy_nodrain(&next, &ptr, sizeof(pointer_t));
+    }
+
+    void SetBufPersist(uint32_t offset, const void *ptr, uint32_t len){
+        node_allocator->nvm_memmove_persist(buf + offset, ptr, len);
+    }
+    void SetBufNodrain(uint32_t offset, const void *ptr, uint32_t len){
+        node_allocator->nvm_memmove_nodrain(buf + offset, ptr, len);
+    }
 };
 
 ////// LinkList 操作
@@ -172,7 +281,7 @@ struct LinkListOp {
     
     pointer_t res;  //返回的节点
 
-    LinkListOp() : root(0), res(0) {
+    LinkListOp() : root(INVALID_POINTER), res(INVALID_POINTER) {
         add_linknode_list.reserve(3); //猜测大部分不超过3，
         free_linknode_list.reserve(3);   //猜测大部分不超过3，
     }
@@ -188,8 +297,29 @@ int LinkListDelete(LinkListOp &op, const inode_id_t key, const Slice &fname);
 
 ////// bptree 操作
 
+struct BptreeOp {
+    pointer_t root;
+    pointer_t res;
 
+    vector<pointer_t> add_indexnode_list;
+    vector<pointer_t> free_indexnode_list;
+    vector<pointer_t> add_leafnode_list;
+    vector<pointer_t> free_leafnode_list;
 
+    BptreeOp() : root(INVALID_POINTER) , res(INVALID_POINTER) {
+        add_indexnode_list.reserve(6);
+        free_indexnode_list.reserve(6);
+        add_leafnode_list.reserve(3);
+        free_leafnode_list.reserve(3);
+    }   
+    ~BptreeOp() {}
+};
+
+BptreeIndexNode *AllocBptreeIndexNode();
+BptreeLeafNode *AllocBptreeLeafNode();
+int BptreeInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, const inode_id_t value);
+int BptreeGet(pointer_t root, const uint64_t hash_key, const Slice &fname, inode_id_t &value);
+int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname);
 
 //////
 } // namespace name
