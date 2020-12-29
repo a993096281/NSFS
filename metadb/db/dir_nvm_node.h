@@ -16,13 +16,24 @@ using namespace std;
 
 namespace metadb {
 
-struct IndexNodeEntry;
+//Bptree 划分范围：key1，pointer1；key2，pointer2；  pointer1 -> key1 <= x < key2;   pointer2 -> key2 <= x <= key3
+struct IndexNodeEntry {
+    uint64_t key;
+    pointer_t pointer;
+
+    IndexNodeEntry() : key(0), pointer(INVALID_POINTER) {}
+    ~IndexNodeEntry() {}
+};
 
 static const uint32_t LINK_NODE_CAPACITY = DIR_LINK_NODE_SIZE - 40;
-static const uint32_t INDEX_NODE_CAPACITY = (DIR_BPTREE_INDEX_NODE_SIZE - 32) / sizeof(struct IndexNodeEntry);
+static const uint32_t INDEX_NODE_CAPACITY = (DIR_BPTREE_INDEX_NODE_SIZE - 16) / sizeof(IndexNodeEntry);
 static const uint32_t LEAF_NODE_CAPACITY = DIR_BPTREE_LEAF_NODE_SIZE - 24;
 
 static const uint32_t LINK_NODE_TRIG_MERGE_SIZE = (LINK_NODE_CAPACITY / 2) - 44;  //LinkNode 触发merge的大小; 减去的是一个KV的长度（假设fname为8）
+static const uint32_t LEAF_NODE_TRIG_MERGE_SIZE = (LEAF_NODE_CAPACITY / 2) - 28; //leaf_node 触发merge的大小；减去的28是一个kv长度（假设fname为8）
+static const uint32_t LEAF_NODE_TRIG_BALANCE_SIZE = LEAF_NODE_CAPACITY / 4; //叶节点无法和左右节点合并， 但是小于该值时应该和左右节点平衡，即和左右节点合并成两个节点
+static const uint32_t INDEX_NODE_TRIG_MERGE_SIZE = (INDEX_NODE_CAPACITY / 2) - 1;  //中间节点触发合并
+static const uint32_t INDEX_NODE_TRIG_BALANCE_SIZE = INDEX_NODE_CAPACITY / 4; //中间节点无法和左右节点合并， 但是小于该值时应该和左右节点平衡，即和左右节点合并成两个节点
 
 enum class DirNodeType : uint8_t {
     UNKNOWN_TYPE = 0,
@@ -138,10 +149,6 @@ struct LinkNode {
 
 
 };
-struct IndexNodeEntry {
-    uint64_t key;
-    pointer_t pointer;
-};
 
 struct BptreeIndexNode {
     uint8_t type;
@@ -149,9 +156,9 @@ struct BptreeIndexNode {
     uint16_t num;
     uint32_t len;    //len没用
     uint64_t magic_number; //暂时没用，充当padding；
-    pointer_t prev;
-    pointer_t next;
-    struct IndexNodeEntry entry[INDEX_NODE_CAPACITY];
+    //pointer_t prev;
+    //pointer_t next;
+    IndexNodeEntry entry[INDEX_NODE_CAPACITY];
 
     BptreeIndexNode() {}
     ~BptreeIndexNode() {}
@@ -183,25 +190,28 @@ struct BptreeIndexNode {
         node_allocator->nvm_memcpy_nodrain(&num, &a, 2);
     }
 
-    void SetPrevPersist(pointer_t ptr){
-        node_allocator->nvm_memcpy_persist(&prev, &ptr, sizeof(pointer_t));
-    }
-    void SetPrevNodrain(pointer_t ptr){
-        node_allocator->nvm_memcpy_nodrain(&prev, &ptr, sizeof(pointer_t));
-    }
-
-    void SetNextPersist(pointer_t ptr){
-        node_allocator->nvm_memcpy_persist(&next, &ptr, sizeof(pointer_t));
-    }
-    void SetNextNodrain(pointer_t ptr){
-        node_allocator->nvm_memcpy_nodrain(&next, &ptr, sizeof(pointer_t));
-    }
-
     void SetEntryPersist(uint32_t offset, const void *ptr, uint32_t len){
-        node_allocator->nvm_memmove_persist(entry + offset, ptr, len);
+        void *buf = static_cast<char *>(entry) + offset;
+        node_allocator->nvm_memmove_persist(buf, ptr, len);
     }
     void SetEntryNodrain(uint32_t offset, const void *ptr, uint32_t len){
-        node_allocator->nvm_memmove_nodrain(entry + offset, ptr, len);
+        void *buf = static_cast<char *>(entry) + offset;
+        node_allocator->nvm_memmove_nodrain(buf, ptr, len);
+    }
+
+    void SetEntryPersistByIndex(uint32_t index, uint64_t key, pointer_t ptr){
+        void *buf = static_cast<char *>(entry) + index * sizeof(IndexNodeEntry);
+        char insert_buf[sizeof(IndexNodeEntry)];
+        memcpy(insert_buf, &key, 8);
+        memcpy(insert_buf + 8, &ptr, sizeof(pointer_t));
+        node_allocator->nvm_memcpy_persist(buf, insert_buf, sizeof(IndexNodeEntry));
+    }
+    void SetEntryNodrainByIndex(uint32_t index, uint64_t key, pointer_t ptr){
+        void *buf = static_cast<char *>(entry) + index * sizeof(IndexNodeEntry);
+        char insert_buf[sizeof(IndexNodeEntry)];
+        memcpy(insert_buf, &key, 8);
+        memcpy(insert_buf + 8, &ptr, sizeof(pointer_t));
+        node_allocator->nvm_memcpy_nodrain(buf, insert_buf, sizeof(IndexNodeEntry));
     }
 
 };
@@ -225,6 +235,17 @@ struct BptreeLeafNode {
     uint32_t GetFreeSpace() {
         return LEAF_NODE_CAPACITY - len;
     }
+
+    void DecodeBufGetKeyValuelen(uint32_t offset, uint64_t &key, uint32_t &value_len){
+        key = *static_cast<uint64_t *>(buf + offset);
+        value_len = *static_cast<uint32_t *>(buf + offset + 8);
+    }
+
+    uint64_t GetMinKey(){
+        uint64_t min_key = *static_cast<uint64_t *>(buf);
+        return min_key;
+    }
+
 
     void Flush(){
         node_allocator->nvm_persist(this, sizeof(BptreeLeafNode));
