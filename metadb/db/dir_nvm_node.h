@@ -33,7 +33,7 @@ static const uint32_t LINK_NODE_TRIG_MERGE_SIZE = (LINK_NODE_CAPACITY / 2) - 44;
 static const uint32_t LEAF_NODE_TRIG_MERGE_SIZE = (LEAF_NODE_CAPACITY / 2) - 28; //leaf_node 触发merge的大小；减去的28是一个kv长度（假设fname为8）
 static const uint32_t LEAF_NODE_TRIG_BALANCE_SIZE = LEAF_NODE_CAPACITY / 4; //叶节点无法和左右节点合并， 但是小于该值时应该和左右节点平衡，即和左右节点合并成两个节点
 static const uint32_t INDEX_NODE_TRIG_MERGE_SIZE = (INDEX_NODE_CAPACITY / 2) - 1;  //中间节点触发合并
-static const uint32_t INDEX_NODE_TRIG_BALANCE_SIZE = INDEX_NODE_CAPACITY / 4; //中间节点无法和左右节点合并， 但是小于该值时应该和左右节点平衡，即和左右节点合并成两个节点
+static const uint32_t INDEX_NODE_TRIG_BALANCE_SIZE = (INDEX_NODE_CAPACITY + 3) / 4; //中间节点无法和左右节点合并， 但是小于该值时应该和左右节点平衡，即和左右节点合并成两个节点, +3单纯因为向上取整
 
 enum class DirNodeType : uint8_t {
     UNKNOWN_TYPE = 0,
