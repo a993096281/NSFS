@@ -122,12 +122,10 @@ void *NVMNodeAllocator::Allocate(uint64_t size){
 
 }
 
-void *NVMNodeAllocator::AllocateAndInit(uint64_t size){
-    uint64_t allocated = (size + NODE_BASE_SIZE - 1) & (~(NODE_BASE_SIZE - 1));  //保证按照NODE_BASE_SIZE分配
-    uint64_t index = GetFreeIndex(allocated);
-    void *alloc_addr = static_cast<void *>(pmemaddr_ + index * NODE_BASE_SIZE);
-    nvm_memset_persist(alloc_addr, c, allocated);
-    return alloc_addr;
+void *NVMNodeAllocator::AllocateAndInit(uint64_t size, int c){
+    void *addr = Allocate(size);
+    nvm_memset_persist(addr, c, size);
+    return addr;
 }
 
 void NVMNodeAllocator::Free(void *addr, uint64_t len){

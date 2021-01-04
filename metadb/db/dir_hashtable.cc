@@ -83,22 +83,38 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *verison, uint32_t index, Lin
     }
     uint32_t add_linknode_num = op.add_linknode_list.size();
     uint32_t free_linknode_num = op.free_linknode_list.size();
-    if(add_linknode_num != free_linknode_num) {
-        uint32_t new_node_num = 0;
-        if((entry->node_num + add_linknode_num) < free_linknode_num) {
-            new_node_num = 0;
-        }
-        else {
-            new_node_num = entry->node_num + add_linknode_num - free_linknode_num;
-        }
-        entry->SetNodeNumPersist(new_node_num);
-        //可能触发rehash或者二级hash
+    
+    if(add_linknode_num > free_linknode_num){
+        entry->SetNodeNumPersist(entry->node_num + add_linknode_num - free_linknode_num);
+        verison->node_num_.fetch_add(add_linknode_num - free_linknode_num);
+    }
+    if(add_linknode_num < free_linknode_num) {
+        entry->SetNodeNumPersist(entry->node_num + add_linknode_num - free_linknode_num);
+        verison->node_num_.fetch_sub(free_linknode_num - add_linknode_num);
     }
 
     if(!op.free_linknode_num.empty()) {  //后续最好原子记录一次操作的所有申请和删除的节点，作为空间管理日志
         for(auto it : op.free_linknode_list) {
             node_allocator->Free(it, DIR_LINK_NODE_SIZE);
         }
+    }
+    if(!op.free_indexnode_list.empty()){
+        for(auto it : op.free_indexnode_list) {
+            node_allocator->Free(it, DIR_BPTREE_INDEX_NODE_SIZE);
+        }
+    }
+    if(!op.free_leafnode_list.empty()){
+        for(auto it : op.free_leafnode_list) {
+            node_allocator->Free(it, DIR_BPTREE_LEAF_NODE_SIZE);
+        }
+    }
+
+    if(hash_type_ == 1){  //一级hash，暂时不会扩展，只会生成新的二级hash
+        
+    }
+
+    if(hash_type_ == 2){  //有可能扩展
+
     }
 }
 

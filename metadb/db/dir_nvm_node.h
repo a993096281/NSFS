@@ -295,16 +295,33 @@ struct BptreeLeafNode {
 };
 
 ////// LinkList 操作
+struct BptreeOp;
 struct LinkListOp {
     pointer_t root;   //输入的root节点
     vector<pointer_t> add_linknode_list;
     vector<pointer_t> free_linknode_list;   //待删除的节点
+
+    vector<pointer_t> add_indexnode_list;
+    vector<pointer_t> free_indexnode_list;
+    vector<pointer_t> add_leafnode_list;
+    vector<pointer_t> free_leafnode_list;
     
     pointer_t res;  //返回的节点
 
     LinkListOp() : root(INVALID_POINTER), res(INVALID_POINTER) {
         add_linknode_list.reserve(3); //猜测大部分不超过3，
         free_linknode_list.reserve(3);   //猜测大部分不超过3，
+
+        add_indexnode_list.reserve(6);
+        free_indexnode_list.reserve(6);
+        add_leafnode_list.reserve(3);
+        free_leafnode_list.reserve(3);
+    }
+    void AddBptreeOp(BptreeOp &op){
+        add_indexnode_list.insert(add_indexnode_list.end(), op.add_indexnode_list.begin(), op.add_indexnode_list.end());
+        free_indexnode_list.insert(free_indexnode_list.end(), op.free_indexnode_list.begin(), op.free_indexnode_list.end());
+        add_leafnode_list.insert(add_leafnode_list.end(), op.add_leafnode_list.begin(), op.add_leafnode_list.end());
+        free_leafnode_list.insert(free_leafnode_list.end(), op.free_leafnode_list.begin(), op.free_leafnode_list.end());
     }
     ~LinkListOp() {}
 };

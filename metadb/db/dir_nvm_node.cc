@@ -129,10 +129,29 @@ void MemoryEncodeFnameKey(char *buf, const Slice &fname, const inode_id_t value)
     memcpy(buf + insert_offset, &value, sizeof(inode_id_t));   
 }
 
+void MemoryEncodeKeyBptreePointer(char * buf, inode_id_t key, pointer_t bptree){
+    uint32_t num = 0;
+    memcpy(buf, &key, sizeof(inode_id_t));
+    memcpy(buf + sizeof(inode_id_t), &num, 4);
+    memcpy(buf + sizeof(inode_id_t) + 4, &bptree, sizeof(pointer_t));
+}
+
 void MemoryDecodeGetKeyNumLen(const char *buf, inode_id_t &key, uint32_t &key_num, uint32_t &key_len){
     key = *static_cast<const inode_id_t *>(buf);
     key_num = *static_cast<const uint32_t *>(buf + sizeof(inode_id_t));
     key_len = *static_cast<const uint32_t *>(buf + sizeof(inode_id_t) + 4);
+}
+
+void LinkNodeUpdateNextPrev(LinkNode *new_node){
+    if(!IS_INVALID_POINTER(new_node->next)) {
+        LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(new_node->next));
+        next_node->SetPrevPersist(NODE_GET_OFFSET(new_node));
+    }
+
+    if(!IS_INVALID_POINTER(new_node->prev)){
+        LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(new_node->prev));
+        prev_node->SetNextPersist(NODE_GET_OFFSET(new_node));
+    }
 }
 
 int LinkNodeSplit(const char *buf, uint32_t len, vector<pointer_t> &res){   //有可能分裂为三个节点
@@ -194,13 +213,99 @@ int LinkNodeSplit(const char *buf, uint32_t len, vector<pointer_t> &res){   //�
 
 }
 
+//将cur节点的key转成B+树bptree后进行操作,buf是剩余内容，len是剩余长度
+int LinkNodeTranBptreeDo(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cur, const char *buf, uint32_t len){
+    //len不可能为0
+    if(len < LINK_NODE_TRIG_MERGE_SIZE ){ //可能需要合并
+        if(!IS_INVALID_POINTER(cur->next)){  
+            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
+            if(next_node->GetFreeSpace() >= len){ //和后节点合并，空间足够组成一个节点
+                LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
+                new_node->CopyBy(cur);
+                new_node->SetBufNodrain(0, buf, len);
+                new_node->SetBufNodrain(len, next_node->buf, next_node->len);
+                new_node->SetNumAndLenNodrain(cur->num +next_node->num, len - next_node->len);
+                new_node->SetMaxkeyNodrain(next_node->max_key);
+                new_node->SetNextNodrain(next_node->next);
+                new_node->Flush();
+
+                LinkNodeUpdateNextPrev(new_node);
+    
+                if(IS_INVALID_POINTER(new_node->prev)){
+                    op.res = NODE_GET_OFFSET(new_node);  //头结点替换
+                }
+
+                op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+                op.free_linknode_list.push_back(NODE_GET_OFFSET(next_node));
+                op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
+                return 0;
+                
+            }
+        }
+
+        if(!IS_INVALID_POINTER(cur->prev)){
+            LinkNode *prev_node = static_cast<LinkNode *>(cur->prev);
+            if(prev_node->GetFreeSpace() >= len){ //和前节点合并，空间足够组成一个节点
+                LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
+                new_node->CopyBy(prev_node);
+                new_node->SetBufNodrain(prev_node->len, buf, len);
+
+                new_node->SetNumAndLenNodrain(new_node->num + cur->num, new_node->len + len);
+                new_node->SetMaxkeyNodrain(cur->max_key);
+                new_node->SetNextNodrain(cur->next);
+                new_node->Flush();
+
+                LinkNodeUpdateNextPrev(new_node);
+    
+                if(IS_INVALID_POINTER(new_node->prev)){
+                    op.res = NODE_GET_OFFSET(new_node);  //头结点替换
+                }
+
+                op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+                op.free_linknode_list.push_back(NODE_GET_OFFSET(prev_node));
+                op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
+                return 0;
+            }
+        }
+
+        //前后节点都不适合合并，保持单个节点；
+    }
+
+    //剩下内容组成单个节点
+
+    LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
+    new_node->CopyBy(cur);
+    new_node->SetBufNodrain(0, buf, len);
+    new_node->SetNumAndLenNodrain(cur->num, len);
+    
+    new_node->Flush();
+    
+    LinkNodeUpdateNextPrev(new_node);
+
+    if(IS_INVALID_POINTER(new_node->prev)){
+        op.res = NODE_GET_OFFSET(new_node);  //头结点替换
+    }
+
+    op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+    op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
+    return 0;
+}
+
 int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Slice &fname, const inode_id_t value){
     LinkNodeSearchResult res;
     LinkNodeSearch(res, cur, key, fname);
     if(res.key_find){
         if(res.value_is_bptree) { //bptree 插入
-            pointer_t bptree = cur->DecodeBufGetBptree(res.key_offset + 8 + 4);
+            pointer_t bptree = cur->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
             //bptree 插入
+            BptreeOp bop;
+            bop.root = bptree;
+            bop.res = bptree;
+            BptreeInsert(bop, MurmurHash64(fname.data(), fname.size()), fname, value);
+            op.AddBptreeOp(bop);
+            if(bop.root != bop.res){  //修改根节点
+                cur->SetBufPersist(res.key_offset + 8 + 4, &bop.res, sizeof(pointer_t));
+            }
             return 0;
         }
         if(res.fname_find) { //node直接修改
@@ -210,7 +315,7 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             op.res = NODE_GET_OFFSET(cur);
             return 0;
         }
-        //
+        //pinode存在，fname不存在情况
         uint32_t add_len = 8 + 4 + fname.size() + sizeof(inode_id_t);
         if(cur->GetFreeSpace() >= add_len) { //空间足够，可以插入
             LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
@@ -230,28 +335,54 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             
             new_node->SetNumAndLenNodrain(cur->num, cur->len + add_len);
             new_node->Flush();
-
-            pointer_t next = new_node->next;
-            if(!IS_INVALID_POINTER(next)){
-                LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(next));
-                next_node->SetPrevPersist(NODE_GET_OFFSET(new_node));
-            }
-            pointer_t prev = new_node->prev;
-            if(!IS_INVALID_POINTER(prev)){
-                LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(prev));
-                prev_node->SetNextPersist(NODE_GET_OFFSET(new_node));
+            
+            LinkNodeUpdateNextPrev(new_node);
+            if(IS_INVALID_POINTER(new_node->prev)){  //更新根节点
+                op.res = NODE_GET_OFFSET(new_node);
             }
 
             op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
             op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
-            op.res = NODE_GET_OFFSET(new_node);
 
             delete[] buf;
             return 0;
         } else {
             if((8 + 4 + 4 + res.key_len + add_len) > LINK_NODE_CAPACITY){  //同pinode_id聚齐的kv大于一个LinkNode Size，转成B+tree;
+                uint32_t need_len = res.key_len + add_len;
+                assert(need_len <= LEAF_NODE_CAPACITY);
+                BptreeLeafNode *root = AllocBptreeLeafNode();
+                root->SetBufNodrain(0, cur->buf + res.key_offset + 8 + 4 + 4, res.key_len);
+                uint32_t insert_offset = res.fname_offset - res.key_offset - 8 - 4 - 4;
+                uint32_t need_move = res.key_len - insert_offset;
+                if(need_move > 0) {
+                    root->SetBufNodrain(insert_offset + add_len, root->buf + insert_offset, add_len);
+                }
+                char *buf = new char[add_len];
+                MemoryEncodeHashkeyLenFnameValue(buf, MurmurHash64(fname.data(), fname.size()), fname, value);
+                root->SetBufNodrain(insert_offset, buf, add_len);
+                root->SetNumAndLenNodrain(res.key_num + 1, need_len);
+                root->Flush();
 
-                return 0;
+                op.add_leafnode_list.push_back(NODE_GET_OFFSET(root));
+
+                //处理转换成b+tree后的链表；
+
+                delete[] buf;
+                uint32_t remain_len = cur->len - res.key_len + 4; //加4是因为|----key(8B)---|---num(4B)---|----len(4B)----| 转成 |----key(8B)---|---num(4B) = 0 ---|---b+tree_pointer(8B)---|
+                char *remain_buf = new char[remain_len];   //剩余内容一定很少，转换成memory再操作
+                uint32_t first_move = res.key_offset;
+                if(first_move){
+                    memcpy(remain_buf, cur->buf, first_move);
+                }
+                MemoryEncodeKeyBptreePointer(remain_buf + first_move, key, NODE_GET_OFFSET(root));
+                uint32_t second_move = cur->len - (res.key_offset + sizeof(inode_id_t) + 8 + res.key_len);
+                if(second_move){
+                    memcpy(remain_buf + first_move + sizeof(inode_id_t) + 12, cur->buf + res.key_offset + sizeof(inode_id_t) + 8 + res.key_len, second_move);
+                }
+                int ret = LinkNodeTranBptreeDo(op, res, cur, remain_buf, remain_len);
+
+                delete[] remain_buf;
+                return ret;
             }
 
             //普通分裂,再插入
@@ -294,10 +425,11 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             if(!IS_INVALID_POINTER(cur->prev)){
                 LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
                 prev_node->SetNextPersist(NODE_GET_OFFSET(res[0]));
+            } else {
+                op.res = NODE_GET_OFFSET(res[0]);   //根节点替换
             }
             
             op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
-            op.res = NODE_GET_OFFSET(res[0]);
 
             delete[] buf;
             return 0;
@@ -331,20 +463,14 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
         new_node->SetNumAndLenNodrain(cur->num + 1, cur->len + add_len);
         new_node->Flush();
 
-        pointer_t next = new_node->next;
-        if(!IS_INVALID_POINTER(next)){
-            LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(next));
-            next_node->SetPrevPersist(NODE_GET_OFFSET(new_node));
-        }
-        pointer_t prev = new_node->prev;
-        if(!IS_INVALID_POINTER(prev)){
-            LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(prev));
-            prev_node->SetNextPersist(NODE_GET_OFFSET(new_node));
+        LinkNodeUpdateNextPrev(new_node);
+
+        if(IS_INVALID_POINTER(new_node->prev)){  //替换根节点
+            op.res = NODE_GET_OFFSET(new_node);
         }
 
         op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
         op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
-        op.res = NODE_GET_OFFSET(new_node);
 
         delete[] buf;
         return 0;
@@ -423,11 +549,7 @@ int LinkListInsert(LinkListOp &op, const inode_id_t key, const Slice &fname, con
     pointer_t insert = prev;  //在该节点插入kv；
     LinkNode *insert_node = static_cast<LinkNode *>(NODE_GET_POINTER(insert));
     LinkNodeInsert(op, insert_node, key, fname, value);
-    if(insert != head){  //插入的不是头节点，返回的op.res需要为头节点
-        op.res = head;
-    }
 
-    //插入的是头节点，返回的op.res就是头结点；
     return 0;
 }
 
@@ -474,11 +596,159 @@ inode_id_t LinkNodeFindMaxKey(LinkNode *cur){
     return temp_key;
 }
 
+//删除Bptree树时，后续处理
+int LinkNodeDeleteBptree(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cur){
+    uint32_t del_len = sizeof(inode_id_t) + 4 + 8;
+    uint32_t remain_len = cur->len - del_len;
+    if(remain_len != 0 && remain_len < LINK_NODE_TRIG_MERGE_SIZE ){ //可能需要合并
+        if(!IS_INVALID_POINTER(cur->next)){  
+            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
+            if(next_node->GetFreeSpace() >= remain_len){ //和后节点合并，空间足够组成一个节点
+                LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
+                new_node->CopyBy(cur);
+                uint32_t del_offset = res.key_offset;
+                uint32_t need_move = cur->len - (del_offset + del_len);
+                if(need_move > 0) {
+                    new_node->SetBufNodrain(del_offset, cur->buf + del_offset + del_len, need_move);
+                }
+                if(res.key_index == 0){
+                     //删除的是最小值
+                    inode_id_t min_key;
+                    new_node->DecodeBufGetKey(0, min_key);
+                    new_node->SetMinkeyNodrain(min_key);
+                    
+                }
+                new_node->SetBufNodrain(new_node->len, next_node->buf, next_node->len);
+                new_node->SetNumAndLenNodrain(new_node->num - 1 + next_node->num, new_node->len - del_len + next_node->len);
+                new_node->SetMaxkeyNodrain(next_node->max_key);
+                new_node->SetNextNodrain(next_node->next);
+                new_node->Flush();
+
+                LinkNodeUpdateNextPrev(new_node);
+    
+                if(IS_INVALID_POINTER(new_node->prev)){
+                    op.res = NODE_GET_OFFSET(new_node);  //头结点替换
+                }
+
+                op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+                op.free_linknode_list.push_back(NODE_GET_OFFSET(next_node));
+                op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
+                return 0;
+                
+            }
+        }
+
+        if(!IS_INVALID_POINTER(cur->prev)){
+            LinkNode *prev_node = static_cast<LinkNode *>(cur->prev);
+            if(prev_node->GetFreeSpace() >= remain_len){ //和前节点合并，空间足够组成一个节点
+                LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
+                new_node->CopyBy(cur);
+                uint32_t del_offset = res.key_offset;
+                uint32_t need_move = cur->len - (del_offset + del_len);
+                if(need_move > 0) {
+                    new_node->SetBufNodrain(del_offset, cur->buf + del_offset + del_len, need_move);
+                }
+                uint16_t num = cur->num - 1;
+                new_node->SetNumAndLenNodrain(num, cur->len - del_len);
+                if(res.key_index == (cur->num - 1)){  //删除的是最大值
+                    inode_id_t max_key = LinkNodeFindMaxKey(new_node);
+                    new_node->SetMaxkeyNodrain(max_key);
+                }
+
+                new_node->SetBufNodrain(prev_node->len, new_node->buf, new_node->len);
+                new_node->SetBufNodrain(0, prev_node->buf, prev_node->len);
+                new_node->SetNumAndLenNodrain(new_node->num + prev_node->num, new_node->len + prev_node->len);
+                new_node->SetMinkeyNodrain(prev_node->min_key);
+                new_node->SetPrevNodrain(prev_node->prev);
+                new_node->Flush();
+
+                LinkNodeUpdateNextPrev(new_node);
+    
+                if(IS_INVALID_POINTER(new_node->prev)){
+                    op.res = NODE_GET_OFFSET(new_node);  //头结点替换
+                }
+
+                op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+                op.free_linknode_list.push_back(NODE_GET_OFFSET(prev_node));
+                op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
+                return 0;
+            }
+        }
+
+        //前后节点都不适合合并，保持单个节点；
+    }
+
+    //剩下内容组成单个节点
+    if(remain_len == 0){  //直接删除节点；
+        if(!IS_INVALID_POINTER(cur->next)){  //后节点存在
+            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
+            next_node->SetPrevPersist(cur->prev);
+        }
+
+        if(!IS_INVALID_POINTER(cur->prev)){  //前结点存在
+            LinkNode *prev_node = static_cast<LinkNode *>(cur->prev);
+            prev_node->SetNextPersist(cur->next);
+        } else {
+            op.res = cur->next;  //头结点替换
+        }
+
+        op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+        return 0;
+    }
+    LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
+    new_node->CopyBy(cur);
+    uint32_t del_offset = res.key_offset;
+    uint32_t need_move = cur->len - (del_offset + del_len);
+    if(need_move > 0) {
+        new_node->SetBufNodrain(del_offset, cur->buf + del_offset + del_len, need_move);
+    }
+    
+    uint16_t num = cur->num - 1;
+    new_node->SetNumAndLenNodrain(num, cur->len - del_len);
+    
+    if(res.key_index == 0){ //删除的是最小值
+        inode_id_t min_key;
+        new_node->DecodeBufGetKey(0, min_key);
+        new_node->SetMinkeyNodrain(min_key);
+    }
+    if(res.key_index == (cur->num - 1)){ //删除的是最大值
+        inode_id_t max_key = LinkNodeFindMaxKey(new_node);
+        new_node->SetMaxkeyNodrain(max_key);
+    }
+    
+    new_node->Flush();
+
+    LinkNodeUpdateNextPrev(new_node);
+    
+    if(IS_INVALID_POINTER(new_node->prev)){
+        op.res = NODE_GET_OFFSET(new_node);  //头结点替换
+    }
+
+    op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+    op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
+    return 0;
+}
+
 int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Slice &fname){
     LinkNodeSearchResult res;
     LinkNodeSearch(res, cur, key, fname);
     if(!res.key_find) return 1;
     if(res.value_is_bptree){  //bptree中删除
+        pointer_t bptree = cur->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
+        
+        BptreeOp bop;
+        bop.root = bptree;
+        bop.res = bptree;
+        BptreeDelete(bop, MurmurHash64(fname.data(), fname.size()), fname);
+        op.AddBptreeOp(bop);
+        if(bop.root != bop.res){  //修改根节点
+            if(IS_INVALID_POINTER(bop.res)){  //根节点删除了，
+                return LinkNodeDeleteBptree(op, res, cur);
+            }
+
+            //根节点替换，直接修改根节点地址
+            cur->SetBufPersist(res.key_offset + 8 + 4, &bop.res, sizeof(pointer_t));
+        }
         return 0;
     }
     if(!res.fname_find) return 1;
@@ -515,15 +785,9 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
                 new_node->SetNextNodrain(next_node->next);
                 new_node->Flush();
 
-                if(!IS_INVALID_POINTER(new_node->next)){
-                    LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(new_node->next));
-                    next_node->SetPrevPersist(NODE_GET_OFFSET(new_node));
-                }
-                    
-                if(!IS_INVALID_POINTER(new_node->prev)){
-                    LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(new_node->prev));
-                    prev_node->SetNextPersist(NODE_GET_OFFSET(new_node));
-                } else {
+                LinkNodeUpdateNextPrev(new_node);
+    
+                if(IS_INVALID_POINTER(new_node->prev)){
                     op.res = NODE_GET_OFFSET(new_node);  //头结点替换
                 }
 
@@ -564,15 +828,9 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
                 new_node->SetPrevNodrain(prev_node->prev);
                 new_node->Flush();
 
-                if(!IS_INVALID_POINTER(new_node->next)){
-                    LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(new_node->next));
-                    next_node->SetPrevPersist(NODE_GET_OFFSET(new_node));
-                }
-                    
-                if(!IS_INVALID_POINTER(new_node->prev)){
-                    LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(new_node->prev));
-                    prev_node->SetNextPersist(NODE_GET_OFFSET(new_node));
-                } else {
+                LinkNodeUpdateNextPrev(new_node);
+    
+                if(IS_INVALID_POINTER(new_node->prev)){
                     op.res = NODE_GET_OFFSET(new_node);  //头结点替换
                 }
 
@@ -588,6 +846,11 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
 
     //剩下内容组成单个节点
     if(remain_len == 0){  //直接删除节点；
+        if(!IS_INVALID_POINTER(cur->next)){  //后节点存在
+            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
+            next_node->SetPrevPersist(cur->prev);
+        }
+
         if(!IS_INVALID_POINTER(cur->prev)){  //前结点存在
             LinkNode *prev_node = static_cast<LinkNode *>(cur->prev);
             prev_node->SetNextPersist(cur->next);
@@ -595,10 +858,6 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             op.res = cur->next;  //头结点替换
         }
 
-        if(!IS_INVALID_POINTER(cur->next)){  //后节点存在
-            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
-            next_node->SetPrevPersist(cur->prev);
-        }
         op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
         return 0;
     }
@@ -629,15 +888,10 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
         }
     }
     new_node->Flush();
-    if(!IS_INVALID_POINTER(cur->next)){
-        LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->next));
-        next_node->SetPrevPersist(NODE_GET_OFFSET(new_node));
-    }
-        
-    if(!IS_INVALID_POINTER(cur->prev)){
-        LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
-        prev_node->SetNextPersist(NODE_GET_OFFSET(new_node));
-    } else {
+
+    LinkNodeUpdateNextPrev(new_node);
+    
+    if(IS_INVALID_POINTER(new_node->prev)){
         op.res = NODE_GET_OFFSET(new_node);  //头结点替换
     }
 

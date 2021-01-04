@@ -59,6 +59,8 @@ public:
         memset(bitmap, 0, gsize);
         return 1;
     };
+
+    int get_capacity() { return gsize; }
         
 private:
     char *bitmap;

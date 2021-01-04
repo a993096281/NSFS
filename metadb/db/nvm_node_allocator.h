@@ -10,11 +10,12 @@
 #include <stdint.h>
 #include <string>
 
+#include "metadb/libnvm.h"
 #include "../util/lock.h"
 #include "../util/bitmap.h"
 #include "format.h"
 
-#define NODE_GET_OFFSET(dst) (dst - metadb::node_pool_pointer)     //void *-> offset
+#define NODE_GET_OFFSET(dst) (static_cast<char *>(det) - metadb::node_pool_pointer)     //void *-> offset
 #define NODE_GET_POINTER(offset) (metadb::node_pool_pointer + offset)  //offset -> void *
 
 namespace metadb {

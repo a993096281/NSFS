@@ -7,10 +7,10 @@
 #ifndef _METADB_FORMAT_H_
 #define _METADB_FORMAT_H_
 
-#include "nvm_node_allocator.h"
-
 #define NODE_BASE_SIZE 256    //node节点基础大小，以该值为块，必须为2的幂次，2^N
+#define FILE_BASE_SIZE 64ULL * 1024 * 1024   //file以64MB为一个group组，里面再划分不同的块
 #define START_ALLOCATOR_INDEX 1  //从1开始分配，0为无效地址。
+
 #define INVALID_POINTER 0
 
 //最高位为1表示是二级hash地址，其余63位为offset
@@ -25,9 +25,6 @@
 
 #define MAX_DIR_BPTREE_LEVEL 8
 
-
-#define NODE_GET_OFFSET(det) (static_cast<char *>(det) - metadb::node_pool_pointer)
-#define NODE_GET_POINTER(offset) (metadb::node_pool_pointer + det)
 
 namespace metadb {
 
