@@ -8,7 +8,7 @@
 #define _METADB_INODE_DB_H_
 
 
-#include <string.h>
+#include <string>
 #include "metadb/option.h"
 #include "metadb/slice.h"
 #include "metadb/inode.h"
@@ -23,6 +23,7 @@ public:
 
     virtual int InodePut(const inode_id_t key, const Slice &value);
     virtual int InodeGet(const inode_id_t key, std::string &value);
+    virtual int InodeDelete(const inode_id_t key);
 private:
     
 };

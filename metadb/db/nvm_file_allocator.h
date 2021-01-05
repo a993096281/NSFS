@@ -269,11 +269,13 @@ private:
     BitMap *bitmap_;  //划分为64MB后的group位图
     uint64_t last_allocate_;
 
-    vector<NVMGroupManager *> groups_[MAX_GROUP_BLOCK_TYPE];   //旧的在开头，新的插入末尾
+    NVMGroupManager * groups_[MAX_GROUP_BLOCK_TYPE];   //groups_不用vector，正在分配的NVMGroupManager
     Mutex groups_mu_[MAX_GROUP_BLOCK_TYPE];  //对groups_[i]进行操作的锁，
 
+    //暂时不加map，因为删除group时还是要在vector中删除，要么vector变成只需要一个正在分配的值，要么去掉map
     map<uint64_t, NVMGroupManager *> map_groups_;   //防止groups_过长，导致查询效率低，每个groups都有一个id，id = offset / FILE_BASE_SIZE
     Mutex map_mu_; // map_groups_的锁
+
 
 
     uint64_t GetFreeIndex();
@@ -284,7 +286,10 @@ private:
 };
 
 extern int InitNVMFileAllocator(const std::string path, uint64_t size);
-
+static inline uint64_t GetId(pointer_t addr);
+static inline uint64_t GetOffset(pointer_t addr);
+static inline uint64_t GetId(void *addr);
+static inline uint64_t GetOffset(void * addr);
 
 } // namespace name
 

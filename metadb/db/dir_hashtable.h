@@ -57,12 +57,17 @@ public:
     HashVersion(uint64_t capacity) {
         capacity_ = capacity;
         rwlock_ = new RWLock[capacity];
+        buckets_ = node_allocator->AllocateAndInit(sizeof(NvmHashEntry) * capacity, 0);
         node_num_.store(0);
         refs_.store(0);
     }
 
     virtual ~HashVersion() {
         delete[] rwlock_;
+    }
+
+    void FreeNvmSpace(){
+        node_allocator->Free(buckets_, sizeof(NvmHashEntry) * capacity_);
     }
 
     Ref() {
@@ -106,10 +111,10 @@ private:
     void GetVersionAndRefByWrite(bool &is_rehash, HashVersion **version);
     void GetVersionAndRefByRead(bool &is_rehash, HashVersion **version, HashVersion **rehash_version);
     uint32_t hash_id(const inode_id_t key, const uint64_t capacity);
-    int HashEntryInsetKV(HashVersion *verison, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
-    void HashEntryDealWithOp(HashVersion *verison, uint32_t index, LinkListOp &op);
-    int HashEntryGetKV(HashVersion *verison, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
-    int HashEntryDeleteKV(HashVersion *verison, uint32_t index, const inode_id_t key, const Slice &fname);
+    int HashEntryInsetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
+    void HashEntryDealWithOp(HashVersion *version, uint32_t index, LinkListOp &op);
+    int HashEntryGetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
+    int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname);
 };
 
 

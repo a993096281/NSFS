@@ -22,6 +22,23 @@ int InitNVMNodeAllocator(const std::string path, uint64_t size){
     return 0;
 }
 
+static inline uint64_t GetId(pointer_t addr){
+    return addr / FILE_BASE_SIZE;
+}
+
+static inline uint64_t GetOffset(pointer_t addr){
+    return addr % FILE_BASE_SIZE;
+}
+
+static inline uint64_t GetId(void *addr){
+    return GetId(FILE_GET_OFFSET(addr));
+}
+
+static inline uint64_t GetOffset(void *addr){
+    return GetOffset(FILE_GET_OFFSET(addr));
+}
+
+
 NVMFileAllocator::NVMFileAllocator(const std::string path, uint64_t size){
     pmemaddr_ = static_cast<char *>(pmem_map_file(path.c_str(), size, PMEM_FILE_CREATE, 0666, &mapped_len_, &is_pmem_));
                 
@@ -36,7 +53,9 @@ NVMFileAllocator::NVMFileAllocator(const std::string path, uint64_t size){
 
     bitmap_ = new BitMap(capacity_ / FILE_BASE_SIZE);
     last_allocate_ = START_ALLOCATOR_INDEX;
-    
+    for(uint32_t i = 0; i < MAX_GROUP_BLOCK_TYPE; i++){
+        groups_[i] = nullptr;
+    }
 }
 
 NVMFileAllocator::~NVMFileAllocator(){
@@ -148,14 +167,14 @@ NVMGroupManager *NVMFileAllocator::CreateNVMGroupManager(NVMGroupBlockType type)
 void *NVMFileAllocator::Allocate(uint64_t size){
     uint8_t type = SelectGroup(size);
     groups_mu_[type].Lock();
-    if(groups_[type].empty()){
-        groups_[type].push_back(CreateNVMGroupManager(type));
+    if(groups_[type] == nullptr){
+        groups_[type] = CreateNVMGroupManager(type);
     }
-    NVMGroupManager *cur = groups_[type][groups_[type].size() - 1];
+    NVMGroupManager *cur = groups_[type];
     int offset = cur->Allocate(size);
     if(offset == -1){
         cur = CreateNVMGroupManager(type);
-        groups_[type].push_back(cur);
+        groups_[type] = cur;
         offset = cur->Allocate(size);
     }
     groups_mu_[type].Unlock();
@@ -169,11 +188,20 @@ void *NVMFileAllocator::AllocateAndInit(uint64_t size, int c){
 }
 
 void NVMFileAllocator::Free(void *addr, uint64_t len){
-
+    Free(static_cast<char *>(addr) - pmemaddr_, len);
 }
 
 void NVMFileAllocator::Free(pointer_t addr, uint64_t len){
-
+    uint8_t type = SelectGroup(len);
+    uint64_t id = GetId(addr);
+    uint64_t offset = GetOffset(addr);
+    map_mu_.Lock();
+    auto it = map_groups_.find(id);
+    it->second->Free(offset, len);
+    if(it->second->FreeSpace() == FILE_BASE_SIZE && it->second != groups_[type]){
+        map_groups_.erase(it);
+    }
+    map_mu_.Unlock();
 }
 
 

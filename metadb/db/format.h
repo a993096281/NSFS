@@ -25,6 +25,11 @@
 
 #define MAX_DIR_BPTREE_LEVEL 8
 
+////
+#define INODE_HASH_ENTRY_SIZE  256
+#define INODE_FILE_SIZE 4ULL * 1024 * 1024   //8MB
+////
+
 
 namespace metadb {
 

@@ -76,8 +76,8 @@ uint32_t DirHashTable::hash_id(const inode_id_t key, const uint64_t capacity){
     return 0;
 }
 
-void DirHashTable::HashEntryDealWithOp(HashVersion *verison, uint32_t index, LinkListOp &op){
-    NvmHashEntry *entry = &(verison->buckets_[index]);
+void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, LinkListOp &op){
+    NvmHashEntry *entry = &(version->buckets_[index]);
     if(op.res != entry->root) {
         entry->SetRootPersist(op.res);
     }
@@ -86,11 +86,11 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *verison, uint32_t index, Lin
     
     if(add_linknode_num > free_linknode_num){
         entry->SetNodeNumPersist(entry->node_num + add_linknode_num - free_linknode_num);
-        verison->node_num_.fetch_add(add_linknode_num - free_linknode_num);
+        version->node_num_.fetch_add(add_linknode_num - free_linknode_num);
     }
     if(add_linknode_num < free_linknode_num) {
         entry->SetNodeNumPersist(entry->node_num + add_linknode_num - free_linknode_num);
-        verison->node_num_.fetch_sub(free_linknode_num - add_linknode_num);
+        version->node_num_.fetch_sub(free_linknode_num - add_linknode_num);
     }
 
     if(!op.free_linknode_num.empty()) {  //后续最好原子记录一次操作的所有申请和删除的节点，作为空间管理日志
@@ -118,8 +118,8 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *verison, uint32_t index, Lin
     }
 }
 
-int DirHashTable::HashEntryInsetKV(HashVersion *verison, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value){
-    NvmHashEntry *entry = &(verison->buckets_[index]);
+int DirHashTable::HashEntryInsetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value){
+    NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
     if(IS_INVALID_POINTER(root)) { 
@@ -127,8 +127,9 @@ int DirHashTable::HashEntryInsetKV(HashVersion *verison, uint32_t index, const i
         LinkListOp op;
         op.root = root;
         op.res = op.root;
+        op.add_linknode_list.push_back(NODE_GET_OFFSET(root));
         res = LinkListInsert(op, key, fname, value);
-        HashEntryDealWithOp(entry, op);
+        HashEntryDealWithOp(version, index, op);
         return res;
     } else if(IS_SECOND_HASH_POINTER(root)) {  //二级hash
 
@@ -137,7 +138,7 @@ int DirHashTable::HashEntryInsetKV(HashVersion *verison, uint32_t index, const i
         op.root = root;
         op.res = op.root;
         res = LinkListInsert(op, key, fname, value);
-        HashEntryDealWithOp(entry, op);
+        HashEntryDealWithOp(version, index, op);
         return res;
     }
     return res;
@@ -158,8 +159,8 @@ int DirHashTable::Put(const inode_id_t key, const Slice &fname, const inode_id_t
     return res;
 }
 
-int DirHashTable::HashEntryGetKV(HashVersion *verison, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value){
-    NvmHashEntry *entry = &(verison->buckets_[index]);
+int DirHashTable::HashEntryGetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value){
+    NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
     if(IS_INVALID_POINTER(root)) { 
@@ -196,8 +197,8 @@ int DirHashTable::Get(const inode_id_t key, const Slice &fname, inode_id_t &valu
     return res;   //
 }
 
-int HashEntryDeleteKV(HashVersion *verison, uint32_t index, const inode_id_t key, const Slice &fname){
-    NvmHashEntry *entry = &(verison->buckets_[index]);
+int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname){
+    NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
     if(IS_INVALID_POINTER(root)) { 
@@ -209,7 +210,7 @@ int HashEntryDeleteKV(HashVersion *verison, uint32_t index, const inode_id_t key
         op.root = root;
         op.res = op.root;
         res = LinkListDelete(op, key, fname);
-        HashEntryDealWithOp(entry, op);
+        HashEntryDealWithOp(version, index, op);
         return 0;
     }
     return 0;
