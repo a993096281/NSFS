@@ -154,8 +154,8 @@ public:
 
     virtual int Put(const inode_id_t key, const pointer_t value);
     virtual int Get(const inode_id_t key, const pointer_t &value);
-    virtual int Update(const inode_id_t key, const pointer_t value);
-    virtual int Delete(const inode_id_t key);
+    virtual int Update(const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
+    virtual int Delete(const inode_id_t key, const pointer_t &value);
 
 private:
     const Option option_;
@@ -168,12 +168,12 @@ private:
 
     void GetVersionAndRefByWrite(bool &is_rehash, InodeHashVersion **version);
     void GetVersionAndRefByRead(bool &is_rehash, InodeHashVersion **version, InodeHashVersion **rehash_version);
-    uint32_t hash_id(const inode_id_t key);
+    uint32_t hash_id(const inode_id_t key, const uint64_t capacity);
     void HashEntryDealWithOp(InodeHashVersion *version, uint32_t index, InodeHashEntryLinkOp &op);
-    int HashEntryInsetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value);
-    int HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value);
+    int HashEntryInsertKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value, pointer_t &old_value);
+    int HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
     int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value);
-    int HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key);
+    int HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value);
     bool NeedRehash(InodeHashVersion *version);
 
 };
@@ -191,10 +191,10 @@ struct InodeHashEntryLinkOp{
 };
 
 NvmInodeHashEntryNode *AllocHashEntryNode();
-int InodeHashEntryLinkInsert(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t value);
-int InodeHashEntryLinkUpdate(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t value);
+int InodeHashEntryLinkInsert(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t value, pointer_t &old_value);
+int InodeHashEntryLinkUpdate(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
 int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, const pointer_t &value);
-int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key);
+int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t &value);
 
 } // namespace name
 

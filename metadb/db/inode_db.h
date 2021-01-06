@@ -22,6 +22,7 @@ public:
     virtual ~InodeDB();
 
     virtual int InodePut(const inode_id_t key, const Slice &value);
+    virtual int InodeUpdate(const inode_id_t key, const Slice &new_value);
     virtual int InodeGet(const inode_id_t key, std::string &value);
     virtual int InodeDelete(const inode_id_t key);
 private:

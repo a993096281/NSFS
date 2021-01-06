@@ -111,7 +111,7 @@ private:
     void GetVersionAndRefByWrite(bool &is_rehash, HashVersion **version);
     void GetVersionAndRefByRead(bool &is_rehash, HashVersion **version, HashVersion **rehash_version);
     uint32_t hash_id(const inode_id_t key, const uint64_t capacity);
-    int HashEntryInsetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
+    int HashEntryInsertKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
     void HashEntryDealWithOp(HashVersion *version, uint32_t index, LinkListOp &op);
     int HashEntryGetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
     int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname);

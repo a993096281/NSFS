@@ -286,10 +286,11 @@ private:
 };
 
 extern int InitNVMFileAllocator(const std::string path, uint64_t size);
-static inline uint64_t GetId(pointer_t addr);
-static inline uint64_t GetOffset(pointer_t addr);
+static inline uint64_t GetId(pointer_t addr);      //以FILE_BASE_SIZE划分的id
+static inline uint64_t GetOffset(pointer_t addr);  //以FILE_BASE_SIZE划分的offset
 static inline uint64_t GetId(void *addr);
 static inline uint64_t GetOffset(void * addr);
+
 
 } // namespace name
 

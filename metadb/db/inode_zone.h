@@ -29,6 +29,7 @@ public:
     virtual ~InodeZone();
 
     virtual int InodePut(const inode_id_t key, const Slice &value);
+    virtual int InodeUpdate(const inode_id_t key, const Slice &new_value);
     virtual int InodeGet(const inode_id_t key, std::string &value);
     virtual int InodeDelete(const inode_id_t key);
 private: 
@@ -49,6 +50,8 @@ private:
     void FilesMapDelete(uint64_t id);         //files_操作
 
     pointer_t WriteFile(const inode_id_t key, const Slice &value);   //返回的是地址
+    int ReadFile(uint64_t offset, std::string &value);
+    int DeleteFlie(pointer_t value_addr);
 
 };
 

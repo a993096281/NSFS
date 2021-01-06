@@ -13,7 +13,8 @@
 
 namespace metadb {
 
-static const uint64_t NVM_INODE_FILE_CAPACITY = INODE_FILE_SIZE - 16;
+static const uint32_t NVM_INODE_FILE_CAPACITY = INODE_FILE_SIZE - 16;
+static const uint32_t NVM_INODE_FILE_HEADER_SIZE = 24;  //头部大小
 
 class NVMInodeFile{
 public:
@@ -29,7 +30,7 @@ public:
         return NVM_INODE_FILE_CAPACITY - write_offset;
     }
 
-    int InsertKV(const inode_id_t key, const Slice &value, uint64_t &offset){
+    int InsertKV(const inode_id_t key, const Slice &value, pointer_t &addr){
         uint64_t len = sizeof(inode_id_t) + 4 + value.size();
         if(GetFreeSpace() < len) return -1;
         uint32_t value_len = value.size();
@@ -38,8 +39,15 @@ public:
         memcpy(buffer + sizeof(inode_id_t), &value_len, 4);
         memcpy(buffer + sizeof(inode_id_t) + 4, value.data(), value_len);
         SetBufPersist(write_offset, buffer, len);
-        offset = write_offset;
+        addr = FILE_GET_OFFSET(buf + write_offset);   //addr 是相对file_allocator的相对地址
         SetNumAndWriteOffsetPersist(num + 1, write_offset + len);
+        return 0;
+    }
+
+    int GetKV(uint64_t offset, std::string &value){  //offset是以该类为起始地址的偏移
+        uint64_t buf_offset = offset - NVM_INODE_FILE_HEADER_SIZE;
+        uint32_t value_len = *static_cast<uint32_t *>(buf + buf_offset + sizeof(inode_id_t));
+        value.assign(buf + buf_offset + sizeof(inode_id_t) + 4, value_len);
         return 0;
     }
 
@@ -66,6 +74,14 @@ public:
 NVMInodeFile *AllocNVMInodeFlie(){
     NVMInodeFile *file = static_cast<NVMInodeFile *>(file_allocator->AllocateAndInit(INODE_FILE_SIZE, 0));
     return file;
+}
+
+static inline uint64_t GetFileId(pointer_t addr){   //以INODE_FILE_SIZE划分的id
+    return addr / INODE_FILE_SIZE;
+}
+
+static inline uint64_t GetFileOffset(pointer_t addr){   //以INODE_FILE_SIZE划分的offset
+    return addr % INODE_FILE_SIZE;
 }
 
 } // namespace name

@@ -118,7 +118,7 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, Lin
     }
 }
 
-int DirHashTable::HashEntryInsetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value){
+int DirHashTable::HashEntryInsertKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value){
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
@@ -152,7 +152,7 @@ int DirHashTable::Put(const inode_id_t key, const Slice &fname, const inode_id_t
     uint32_t index = hash_id(key, version->capacity_);
     bool is_second_hash = IsSecondHashEntry(&version->buckets_[index]);
     if(!is_second_hash) version->rwlock_[index].WriteLock();
-    int res = HashEntryInsetKV(version, index, key, fname, value);
+    int res = HashEntryInsertKV(version, index, key, fname, value);
 
     if(!is_second_hash) version->rwlock_[index].Unlock();
     version->Unref();

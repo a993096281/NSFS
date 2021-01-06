@@ -35,6 +35,28 @@ private:
 
 };
 
+class CondVar {
+public:
+    explicit CondVar(Mutex* mu) : mu_(mu) {
+        pthread_cond_init(&cv_, NULL);
+    }
+    ~CondVar(){
+        pthread_cond_destroy(&cv_);
+    }
+    void Wait(){
+        pthread_cond_wait(&cv_, &mu_->mu_);
+    }
+    void Signal(){
+        pthread_cond_signal(&cv_);
+    }
+    void SignalAll(){
+        pthread_cond_broadcast(&cv_);
+    }
+private:
+    pthread_cond_t cv_;
+    Mutex* mu_;
+};
+
 
 // Helper class that locks a mutex on construction and unlocks the mutex when
 // the destructor of the MutexLock object is invoked.
