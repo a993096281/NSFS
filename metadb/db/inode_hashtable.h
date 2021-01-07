@@ -20,10 +20,13 @@
 #include "util/rwlock.h"
 #include "util/lock.h"
 #include "nvm_node_allocator.h"
+#include "thread_pool.h"
 
 using namespace std;
 
 namespace metadb {
+
+class InodeZone;
 
 struct InodeKeyPointer{
     inode_id_t key;
@@ -149,7 +152,7 @@ public:
 
 class InodeHashTable {
 public:
-    InodeHashTable(const Option &option);
+    InodeHashTable(const Option &option, InodeZone *inode_zone);
     virtual ~InodeHashTable();
 
     virtual int Put(const inode_id_t key, const pointer_t value);
@@ -159,6 +162,7 @@ public:
 
 private:
     const Option option_;
+    InodeZone *inode_zone_;    //主要扩展时可以会调用删除旧地址值
     
     Mutex version_lock_;
     bool is_rehash_;
@@ -167,14 +171,19 @@ private:
 
 
     void GetVersionAndRefByWrite(bool &is_rehash, InodeHashVersion **version);
-    void GetVersionAndRefByRead(bool &is_rehash, InodeHashVersion **version, InodeHashVersion **rehash_version);
-    uint32_t hash_id(const inode_id_t key, const uint64_t capacity);
+    void GetVersionAndRef(bool &is_rehash, InodeHashVersion **version, InodeHashVersion **rehash_version);
+    inline uint32_t hash_id(const inode_id_t key, const uint64_t capacity);
     void HashEntryDealWithOp(InodeHashVersion *version, uint32_t index, InodeHashEntryLinkOp &op);
     int HashEntryInsertKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value, pointer_t &old_value);
+    int HashEntryOnlyInsertKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value);  //已存在则不插入
     int HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
     int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value);
     int HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value);
-    bool NeedRehash(InodeHashVersion *version);
+    inline bool NeedRehash(InodeHashVersion *version);
+
+    static void BackgroundRehashWrapper(void *arg);
+    void BackgroundRehash();
+    void MoveEntryToRehash(InodeHashVersion *version, uint32_t index, InodeHashVersion *rehash_version);
 
 };
 
@@ -191,7 +200,8 @@ struct InodeHashEntryLinkOp{
 };
 
 NvmInodeHashEntryNode *AllocHashEntryNode();
-int InodeHashEntryLinkInsert(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t value, pointer_t &old_value);
+int InodeHashEntryLinkInsert(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t value, pointer_t &old_value);  //已存在则修改
+int InodeHashEntryLinkOnlyInsert(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t value);   //存在既不插入
 int InodeHashEntryLinkUpdate(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
 int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, const pointer_t &value);
 int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t &value);

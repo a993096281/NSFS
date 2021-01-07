@@ -6,6 +6,7 @@
  */
 #include "inode_hashtable.h"
 #include "metadb/debug.h"
+#include "inode_zone.h"
 
 namespace metadb {
 
@@ -109,6 +110,22 @@ int InodeHashEntryLinkInsert(InodeHashEntryLinkOp &op, const inode_id_t key, con
     return 0;
 }
 
+int InodeHashEntryLinkOnlyInsert(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t value){
+    InodeHashEntrySearchResult res;
+    HashEntryLinkSearchKey(res, op.root, key);
+    if(res.key_find){  //已存在
+        return 2;
+    }
+    pointer_t insert;
+    pointer_t index;
+    FindFreeSpaceOrCreatEntry(op, insert, index);
+    NvmInodeHashEntryNode *insert_node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(insert));
+    insert_node->SetEntryPointerPersist(index, value);
+    uint16_t slot = slot_set_index(insert_node->slot, index);
+    insert_node->SetNumAndSlotPersist(insert_node->num + 1, slot);
+    return 0;
+}
+
 int InodeHashEntryLinkUpdate(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t new_value, pointer_t &old_value){
     InodeHashEntrySearchResult res;
     HashEntryLinkSearchKey(res, op.root, key);
@@ -164,7 +181,7 @@ int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, con
 
 ////
 
-InodeHashTable::InodeHashTable(const Option &option) : option_(option) {
+InodeHashTable::InodeHashTable(const Option &option, InodeZone *inode_zone) : option_(option), inode_zone_(inode_zone) {
     is_rehash_ = false;
     version_ = nullptr;
     rehash_version_ = nullptr;
@@ -179,15 +196,16 @@ InodeHashTable::~InodeHashTable(){
     if(rehash_version_) rehash_version_->Unref();
 }
 
-uint32_t InodeHashTable::hash_id(const inode_id_t key, const uint64_t capacity){
+inline uint32_t InodeHashTable::hash_id(const inode_id_t key, const uint64_t capacity){
     return (key / option_.INODE_MAX_ZONE_NUM) % capacity;
 }
 
-bool InodeHashTable::NeedRehash(InodeHashVersion *version){
+inline bool InodeHashTable::NeedRehash(InodeHashVersion *version){
     uint64_t node_num = version->node_num_.load();
-    if(!rehash_version_ && node_num >= (version->capacity_ * option_.INODE_HASHTABLE_TRIG_REHASH_TIMES)){
-
+    if(!is_rehash_ && node_num >= (version->capacity_ * option_.INODE_HASHTABLE_TRIG_REHASH_TIMES)){
+        return true;
     }
+    return false;
 }
 
 void InodeHashTable::HashEntryDealWithOp(InodeHashVersion *version, uint32_t index, InodeHashEntryLinkOp &op){
@@ -213,6 +231,7 @@ void InodeHashTable::HashEntryDealWithOp(InodeHashVersion *version, uint32_t ind
 
     if(NeedRehash(version)){
         //rehash
+        thread_pool->Schedule(&InodeHashTable::BackgroundRehashWrapper, this);
     }
     
 }
@@ -231,7 +250,7 @@ void InodeHashTable::GetVersionAndRefByWrite(bool &is_rehash, InodeHashVersion *
     }
 }
 
-void InodeHashTable::GetVersionAndRefByRead(bool &is_rehash, InodeHashVersion **version, InodeHashVersion **rehash_version){
+void InodeHashTable::GetVersionAndRef(bool &is_rehash, InodeHashVersion **version, InodeHashVersion **rehash_version){
     MutexLock lock(&version_lock_);
     if(is_rehash_){
         is_rehash = true;
@@ -248,38 +267,60 @@ void InodeHashTable::GetVersionAndRefByRead(bool &is_rehash, InodeHashVersion **
 }
 
 int InodeHashTable::HashEntryInsertKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value, pointer_t &old_value){
+    version->rwlock_[index].WriteLock();
     NvmInodeHashEntry *entry = &(version->buckets_[index]);
     InodeHashEntryLinkOp op;
     op.root = entry->root;
     op.res = entry->root;
     int res = InodeHashEntryLinkInsert(op, key, value, old_value);
     HashEntryDealWithOp(version, index, op);
+    version->rwlock_[index].Unlock();
     return res;
 
 }
 
+int InodeHashTable::HashEntryOnlyInsertKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value){
+    version->rwlock_[index].WriteLock();
+    NvmInodeHashEntry *entry = &(version->buckets_[index]);
+    InodeHashEntryLinkOp op;
+    op.root = entry->root;
+    op.res = entry->root;
+    int res = InodeHashEntryLinkOnlyInsert(op, key, value);
+    if(res == 0) HashEntryDealWithOp(version, index, op);
+    version->rwlock_[index].Unlock();
+    return res;
+}
+
 int HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t new_value, pointer_t &old_value){
+    version->rwlock_[index].WriteLock();
     NvmInodeHashEntry *entry = &(version->buckets_[index]);
     InodeHashEntryLinkOp op;
     op.root = entry->root;
     op.res = entry->root;
     int res = InodeHashEntryLinkUpdate(op, key, new_value, old_value);
     if(res == 0) HashEntryDealWithOp(version, index, op);
+    version->rwlock_[index].Unlock();
     return res;
 }
 
 int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value){
+    //version->rwlock_[index].ReadLock();  //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点是一个问题，延时删除可行或引用计数，
+                                                //暂时简单处理，由于空间分配是往后分配，提前删除没有影响；
     NvmInodeHashEntry *entry = &(version->buckets_[index]);
-    return InodeHashEntryLinkGet(entry->root, key, value);
+    int res =  InodeHashEntryLinkGet(entry->root, key, value);
+    //version->rwlock_[index].Unlock();
+    return res;
 }
 
 int HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value){
+    version->rwlock_[index].WriteLock();
     NvmInodeHashEntry *entry = &(version->buckets_[index]);
     InodeHashEntryLinkOp op;
     op.root = entry->root;
     op.res = entry->root;
     int res = InodeHashEntryLinkDelete(op, key, value);
     if(res == 0) HashEntryDealWithOp(version, index, op);
+    version->rwlock_[index].WriteLock();
     return res;
 }
 
@@ -288,9 +329,9 @@ int InodeHashTable::Put(const inode_id_t key, const pointer_t value){
     InodeHashVersion *version;
     GetVersionAndRefByWrite(is_rehash, &version);
     uint32_t index = hash_id(key, version->capacity_);
-    version->rwlock_[index].WriteLock();
+    
     int res = HashEntryInsertKV(version, index, key, value);
-    version->rwlock_[index].Unlock();
+    
     version->Unref();
     return res;
 }
@@ -299,19 +340,19 @@ int InodeHashTable::Get(const inode_id_t key, const pointer_t &value){
     bool is_rehash = false;
     InodeHashVersion *version;
     InodeHashVersion *rehash_version;
-    GetVersionAndRefByRead(is_rehash, &version, &rehash_version);
+    GetVersionAndRef(is_rehash, &version, &rehash_version);
     if(is_rehash){  //正在rehash，先在rehash_version查找，再查找version
         uint32_t index = hash_id(key, rehash_version->capacity_);
-        rehash_version->rwlock_[index].ReadLock();  //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点时一个问题，延时删除可行，暂时简单处理，加读锁；
+        
         int res = HashEntryGetKV(rehash_version, index, key, value);
-        rehash_version->rwlock_[index].Unlock();
+        
         rehash_version->Unref();
         if(res == 0) return res;   //res == 0,意味着找到
     }
     uint32_t index = hash_id(key, version->capacity_);
-    version->rwlock_[index].ReadLock();  //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点时一个问题，延时删除可行，暂时简单处理，加读锁；
+    
     int res = HashEntryGetKV(version, index, key, value);
-    version->rwlock_[index].Unlock();
+    
     version->Unref();
     return res;   //
 }
@@ -321,9 +362,9 @@ int InodeHashTable::Update(const inode_id_t key, const pointer_t new_value, poin
     InodeHashVersion *version;
     GetVersionAndRefByWrite(is_rehash, &version);
     uint32_t index = hash_id(key, version->capacity_);
-    version->rwlock_[index].WriteLock();
+    
     int res = HashEntryInsertKV(version, index, key, new_value, old_value);
-    version->rwlock_[index].Unlock();
+    
     version->Unref();
     return res;
 }
@@ -332,23 +373,90 @@ int InodeHashTable::Delete(const inode_id_t key, const pointer_t &value){
     bool is_rehash = false;
     InodeHashVersion *version;
     InodeHashVersion *rehash_version;
-    GetVersionAndRefByRead(is_rehash, &version, &rehash_version);  //只是为了获取两个版本
+    GetVersionAndRef(is_rehash, &version, &rehash_version);  //只是为了获取两个版本
 
     uint32_t index = hash_id(key, version->capacity_);
-    version->rwlock_[index].WriteLock();  
+     
     int res1 = HashEntryDeleteKV(version, index, key, value);
-    version->rwlock_[index].Unlock();
+    
     version->Unref();
     int res2;
     if(is_rehash) { //正在rehash，先在version删除，再在rehash_version中删除
         uint32_t index = hash_id(key, rehash_version->capacity_);
-        rehash_version->rwlock_[index].WriteLock();  
+         
         res2 = HashEntryDeleteKV(rehash_version, index, key, value);
-        rehash_version->rwlock_[index].Unlock();
+        
         rehash_version->Unref();
 
     }
     return res1 & res2;  //有一个为0则为0
+}
+
+static void InodeHashTable::BackgroundRehashWrapper(void *arg){
+    reinterpret_cast<InodeHashTable *>(arg)->BackgroundRehash();
+}
+
+void InodeHashTable::BackgroundRehash(){
+    version_lock_.Lock();
+    if(!NeedRehash(version_)){
+        version_lock_.Unlock();
+        return ;
+    }
+    rehash_version_ = new InodeHashVersion(version_->capacity_ * 2);
+    version_->Ref();
+    rehash_version_->Ref();
+    is_rehash_ = true;
+    version_lock_.Unlock();
+
+    //开始逐步迁移数据到rehash_version_中
+    for(uint32_t index = 0; index < version_->capacity_; index++){
+        MoveEntryToRehash(version_, index, rehash_version_);
+    }
+    //迁移完
+    version_lock_.Lock();
+    InodeHashVersion *old_version = version_;
+    version_ = rehash_version_;
+    rehash_version_ = nullptr;
+    is_rehash_ = false;
+    version_lock_.Unlock();
+
+    old_version->Unref();   //解除本函数的调用
+    old_version->Unref();   //删除旧version
+    
+}
+
+void InodeHashTable::MoveEntryToRehash(InodeHashVersion *version, uint32_t index, InodeHashVersion *rehash_version){
+    version->rwlock_[index].WriteLock();   //
+    NvmInodeHashEntry *entry = &(version->buckets_[index]);
+    vector<pointer_t> free_list;
+    pointer_t cur = entry->root;
+    NvmInodeHashEntryNode *cur_node;
+    inode_id_t key;
+    uint32_t key_index;
+    pointer_t value;
+    int res = 0;
+    while(!IS_INVALID_POINTER(cur)) {
+        cur_node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(cur));
+        for(uint16_t i = 0; i < INODE_HASH_ENTRY_NODE_CAPACITY; i++){
+            if(!slot_get_index(cur_node->slot, i)) continue;
+            key = cur_node->entry[i].key;
+            value = cur_node->entry[i].pointer;
+            key_index = hash_id(key, rehash_version->capacity_);
+            res = HashEntryOnlyInsertKV(rehash_version, key_index, key, value);
+            if(res == 2){  //说明新插入了相同key，旧value废弃
+                inode_zone_->DeleteFlie(value);
+            }
+
+        }
+        free_list.push_back(cur);
+        cur = cur_node->next;
+    }
+    entry->SetRootPersit(INVALID_POINTER);  //旧version的entry变为空
+    version->rwlock_[index].Unlock();
+
+    for(auto it : free_list) {
+        node_allocator->Free(it, INODE_HASH_ENTRY_SIZE);
+    }
 }
 
 } // namespace name

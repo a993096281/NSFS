@@ -11,7 +11,7 @@ namespace metadb {
 
 InodeZone::InodeZone(const Option &option) : option_(option) {
     write_file_ = nullptr;
-    hashtable_ = new InodeHashTable(option);
+    hashtable_ = new InodeHashTable(option, this);
 }
 
 InodeZone::~InodeZone(){

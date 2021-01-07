@@ -32,6 +32,8 @@ public:
     virtual int InodeUpdate(const inode_id_t key, const Slice &new_value);
     virtual int InodeGet(const inode_id_t key, std::string &value);
     virtual int InodeDelete(const inode_id_t key);
+
+    int DeleteFlie(pointer_t value_addr);   ////在文件中删除该地址，标记无效kv的个数
 private: 
     const Option option_;
     InodeHashTable *hashtable_;   //全部key-offset存储结构
@@ -51,7 +53,6 @@ private:
 
     pointer_t WriteFile(const inode_id_t key, const Slice &value);   //返回的是地址
     int ReadFile(uint64_t offset, std::string &value);
-    int DeleteFlie(pointer_t value_addr);
 
 };
 

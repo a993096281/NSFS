@@ -47,6 +47,7 @@ int LinkNodeSearch(LinkNodeSearchResult &res, LinkNode *cur, const inode_id_t ke
     }
 
     inode_id_t temp_key;
+    uint32_t kv_len;
     uint32_t key_num, key_len;
     uint32_t offset = 0;
     uint32_t i = 0;
@@ -97,8 +98,13 @@ int LinkNodeSearch(LinkNodeSearchResult &res, LinkNode *cur, const inode_id_t ke
             res.key_offset = offset;
             return 1；
         }
+        if(key_num == 0){
+            kv_len = sizeof(inode_id_t) + 4 + 8;
+        } else {
+            kv_len = sizeof(inode_id_t) + 4 + 4 + key_len;
+        }
 
-        offset += (sizeof(inode_id_t) + 4 + 4 + key_len);
+        offset += kv_len;
     }
     res.key_index = i;
     res.key_offset = offset;
@@ -142,6 +148,10 @@ void MemoryDecodeGetKeyNumLen(const char *buf, inode_id_t &key, uint32_t &key_nu
     key_len = *static_cast<const uint32_t *>(buf + sizeof(inode_id_t) + 4);
 }
 
+inode_id_t MemoryDecodeGetKey(const char *buf){
+    return (*static_cast<const inode_id_t *>(buf));
+}
+
 void LinkNodeUpdateNextPrev(LinkNode *new_node){
     if(!IS_INVALID_POINTER(new_node->next)) {
         LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(new_node->next));
@@ -161,14 +171,20 @@ int LinkNodeSplit(const char *buf, uint32_t len, vector<pointer_t> &res){   //�
     uint16_t new_node_key_num = 0;
     inode_id_t key;
     uint32_t key_num, key_len;
+    uint32_t kv_len;
     inode_id_t min_key, prev_key;
     pointer_t prev = INVALID_POINTER;
     uint32_t split_size = len / 2; //分为两半的size；
     while(offset < len) {
         MemoryDecodeGetKeyNumLen(buf + offset, key, key_num, key_len);
         if(new_node_len == 0) min_key = key;
+        if(key_num == 0){
+            kv_len = sizeof(inode_id_t) + 4 + 8;
+        } else {
+            kv_len = sizeof(inode_id_t) + 8 + key_len;
+        }
 
-        if((new_node_len + sizeof(inode_id_t) + 8 + key_len)  > LINK_NODE_CAPACITY){  //该节点不可再增加内容，前面的内容生成一个节点
+        if((new_node_len + kv_len)  > LINK_NODE_CAPACITY){  //该节点不可再增加内容，前面的内容生成一个节点
             LinkNode *new_node = AllocLinkNode();
             new_node->SetNumAndLenNodrain(new_node_key_num, new_node_len);
             new_node->SetMinkeyNodrain(min_key);
@@ -184,9 +200,9 @@ int LinkNodeSplit(const char *buf, uint32_t len, vector<pointer_t> &res){   //�
             res.push_back(prev);
             
         }
-        offset += (sizeof(inode_id_t) + 8 + key_len);
+        offset += kv_len;
         prev_key = key;
-        new_node_len += (sizeof(inode_id_t) + 8 + key_len);
+        new_node_len += kv_len;
         new_node_key_num++;
         if(new_node_len >= split_size || offset == len) { //长度超过剩余内容一半，或者到达末尾，可生成一个节点
             LinkNode *new_node = AllocLinkNode();
@@ -915,6 +931,59 @@ int LinkListDelete(LinkListOp &op, const inode_id_t key, const Slice &fname){
     pointer_t del = prev;  //在该节点插入kv；
     LinkNode *del_node = static_cast<LinkNode *>(NODE_GET_POINTER(del));
     return LinkNodeDelete(op, del_node, key, fname);
+}
+
+int MemoryTranToNVMLinkNode(vector<string> &kvs, pointer_t &root, uint32_t &node_num){
+    if(kvs.empty()) return 0;
+    LinkNode *new_node = AllocLinkNode();
+    uint16_t new_node_key_num = 0;
+    uint32_t new_node_len = 0;
+
+    root = NODE_GET_OFFSET(new_node);
+    vector<LinkNode *> add_nodes;
+
+    inode_id_t key, prev_key;
+    uint32_t kv_len;
+    pointer_t prev = INVALID_POINTER;
+    for(uint32_t i = 0; i < kvs.size(); i++){
+        key = MemoryDecodeGetKey(kvs[i].data());
+        kv_len = kvs[i].size();
+        if(new_node_key_num == 0) new_node->SetMinkeyNodrain(key);
+
+        if((new_node_len + kv_len)  > LINK_NODE_CAPACITY){ //单节点存不下了，生成节点
+            new_node->SetNumAndLenNodrain(new_node_key_num, new_node_len);
+            new_node->SetMaxkeyNodrain(prev_key);
+            new_node->SetPrevNodrain(prev);
+            
+            new_node_key_num = 0;
+            new_node_len = 0;
+            prev = NODE_GET_OFFSET(new_node);
+            add_nodes.push_back(new_node);
+
+            //新建新节点
+            new_node = AllocLinkNode();
+            new_node->SetMinkeyNodrain(key);
+        }
+        new_node->SetBufNodrain(new_node_len, kvs[i].data(), kv_len);
+        prev_key = key;
+        new_node_len += kv_len;
+        new_node_key_num++;
+
+        if(i == kvs.size() - 1){  //最后一个kv，生成新节点
+            new_node->SetNumAndLenNodrain(new_node_key_num, new_node_len);
+            new_node->SetMaxkeyNodrain(prev_key);
+            new_node->SetPrevNodrain(prev);
+            add_nodes.push_back(new_node);
+        }
+    }
+    //设置后节点,并刷新节点
+    node_num = add_nodes.size();
+    for(uint32_t i = 0; i < add_nodes.size() - 1; i++){
+        add_nodes[i]->SetNextNodrain(NODE_GET_OFFSET(add_nodes[i + 1]));
+        add_nodes[i]->Flush();
+    }
+    add_nodes[node_num - 1]->Flush();  //刷新尾节点
+    return 0;
 }
 
 ////// bptree

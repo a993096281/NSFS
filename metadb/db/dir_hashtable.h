@@ -20,6 +20,7 @@
 #include "util/lock.h"
 #include "nvm_node_allocator.h"
 #include "dir_nvm_node.h"
+#include "thread_pool.h"
 
 using namespace std;
 
@@ -33,17 +34,26 @@ struct NvmHashEntry {       //如果root执向二级hash地址，则后面8字�
     NvmHashEntry() : root(0), node_num(0), kv_num(0) {}
     ~NvmHashEntry() {}
 
-    SetRootPersist(pointer_t addr) {
+    void SetRootPersist(pointer_t addr) {
         node_allocator->nvm_memcpy_persist(&root, &addr, sizeof(pointer_t));
     }
 
-    SetNodeNumPersist(uint32_t num) {
+    void SetNodeNumPersist(uint32_t num) {
         node_allocator->nvm_memcpy_persist(&node_num, &num, sizeof(uint32_t));
     }
-    SetNodeNumNodrain(uint32_t num) {
+    void SetNodeNumNodrain(uint32_t num) {
         node_allocator->nvm_memcpy_nodrain(&node_num, &num, sizeof(uint32_t));
     }
+
+    void SetSecondHashPersist(void *ptr){
+        uint64_t addr = reinterpret_cast<uint64_t>(ptr);
+        node_allocator->nvm_memcpy_persist(&node_num, &addr, 8);
+    }
     
+    void *GetSecondHashAddr(){
+        uint64_t ptr = *static_cast<uint64_t *>(&node_num);
+        return reinterpret_cast<void *>(ptr);
+    }
 };                    
 
 struct HashVersion {
@@ -70,11 +80,11 @@ public:
         node_allocator->Free(buckets_, sizeof(NvmHashEntry) * capacity_);
     }
 
-    Ref() {
+    void Ref() {
         refs_.fetch_add(1);
     }
 
-    Unref() {
+    void Unref() {
         refs_.fetch_sub(1);
         
         if(refs_.load() == 0){
@@ -85,7 +95,7 @@ public:
 
 class DirHashTable {
 public:
-    DirHashTable(const Option &option, uint32_t hash_type);
+    DirHashTable(const Option &option, uint32_t hash_type, uint64_t capacity);
     virtual ~DirHashTable();
 
     virtual int Put(const inode_id_t key, const Slice &fname, const inode_id_t value);
@@ -93,8 +103,6 @@ public:
     virtual int Delete(const inode_id_t key, const Slice &fname);
     virtual Iterator* DirHashTableGetIterator(const inode_id_t target);
 
-    virtual void SetFirstHashCapacity(uint64_t size) { first_hash_capacity_ = size; }
-    virtual uint64_t GetFirstHashCapacity() { return first_hash_capacity_; }
 private:
     const Option option_;
     uint32_t hash_type_;  //1是一级hash，2是二级hash；
@@ -104,17 +112,23 @@ private:
     HashVersion *version_;
     HashVersion *rehash_version_; //rehash时，这个版本是正在rehash版本；
 
-    uint64_t first_hash_capacity_;  //二级hash才会用到
-
 
     bool IsSecondHashEntry(NvmHashEntry *entry);
     void GetVersionAndRefByWrite(bool &is_rehash, HashVersion **version);
     void GetVersionAndRefByRead(bool &is_rehash, HashVersion **version, HashVersion **rehash_version);
-    uint32_t hash_id(const inode_id_t key, const uint64_t capacity);
+    inline uint32_t hash_id(const inode_id_t key, const uint64_t capacity);
     int HashEntryInsertKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
     void HashEntryDealWithOp(HashVersion *version, uint32_t index, LinkListOp &op);
     int HashEntryGetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
     int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname);
+
+    inline bool NeedHashEntryToSecondHash(NvmHashEntry *entry);
+    inline bool NeedSecondHashDoRehash();
+    void AddHashEntryTranToSecondHashJob(HashVersion *version, uint32_t index);
+    static void HashEntryTranToSecondHashWork(void *arg);
+    static void SecondHashDoRehashJob(void *arg);
+    void SecondHashDoRehashWork();
+    void MoveEntryToRehash(HashVersion *version, uint32_t index, HashVersion *rehash_version);
 };
 
 

@@ -88,7 +88,7 @@ public:
         return NULL;
     }
 
-    pthread_t StartThread(void (*function)(void*), void* arg) {   //直接新建线程运行任务，
+    static pthread_t StartThread(void (*function)(void*), void* arg) {   //直接新建线程运行任务，
         pthread_t t;
         TaskItem* task = new TaskItem(function, arg);
         pthread_create(&t, NULL,  &StartThreadWrapper, task);
@@ -105,7 +105,9 @@ private:
     bool shutdown_;
 };
 
+extern ThreadPool *thread_pool;
 
+extern int InitThreadPool(uint32_t count);
 
 
 } // namespace name

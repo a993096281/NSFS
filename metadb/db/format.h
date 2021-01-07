@@ -14,10 +14,10 @@
 #define INVALID_POINTER 0
 
 //最高位为1表示是二级hash地址，其余63位为offset
-#define SECOND_HASH_POINTER (1ULL << 63)
+#define SECOND_HASH_POINTER  (1ULL << 63)
 
 #define IS_INVALID_POINTER(offset) (offset == INVALID_POINTER)
-#define IS_SECOND_HASH_POINTER(offset) (offset & SECOND_HASH_POINTER)
+#define IS_SECOND_HASH_POINTER(offset) (offset >> 63)
 
 #define DIR_LINK_NODE_SIZE  512
 #define DIR_BPTREE_INDEX_NODE_SIZE  256
