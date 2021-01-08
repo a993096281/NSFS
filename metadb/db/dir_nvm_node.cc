@@ -546,13 +546,9 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
         delete[] buf;
         return 0;
     }
-
-    
-
 }
 
 int LinkListInsert(LinkListOp &op, const inode_id_t key, const Slice &fname, const inode_id_t value){
-    pointer_t head = op.root;
     pointer_t cur = op.root;
     pointer_t prev = op.root;
 
@@ -983,6 +979,344 @@ int MemoryTranToNVMLinkNode(vector<string> &kvs, pointer_t &root, uint32_t &node
         add_nodes[i]->Flush();
     }
     add_nodes[node_num - 1]->Flush();  //刷新尾节点
+    return 0;
+}
+
+//只搜索key的位置
+int LinkNodeSearchKey(LinkNodeSearchResult &res, LinkNode *cur, const inode_id_t key){
+    if(compare_inode_id(key, cur->min_key) < 0) {
+        res.key_index = 0;
+        res.key_offset = 0;
+        return 1;
+    }
+    if(compare_inode_id(key, cur->max_key) > 0) {
+        res.key_index = cur->num;
+        res.key_offset = cur->len;
+        return 1;
+    }
+
+    inode_id_t temp_key;
+    uint32_t kv_len;
+    uint32_t key_num, key_len;
+    uint32_t offset = 0;
+    uint32_t i = 0;
+    for(; i < cur->num; i++){
+        cur->DecodeBufGetKeyNumLen(offset, temp_key, key_num, key_len);
+        if(compare_inode_id(key, temp_key) == 0) {  //找到key
+            res.key_find = true;
+            res.key_index = i;
+            res.key_offset = offset;
+            res.key_num = key_num;
+            res.key_len = key_len;
+            if(key_num == 0){ //value 是bptree
+                res.value_is_bptree = true;
+            } 
+            return 0;
+        }
+
+        if(compare_inode_id(key, temp_key) < 0) {  //未找到
+            res.key_index = i;
+            res.key_offset = offset;
+            return 1；
+        }
+        if(key_num == 0){
+            kv_len = sizeof(inode_id_t) + 4 + 8;
+        } else {
+            kv_len = sizeof(inode_id_t) + 4 + 4 + key_len;
+        }
+
+        offset += kv_len;
+    }
+    res.key_index = i;
+    res.key_offset = offset;
+    return 1;
+}
+
+//将迁移rehash_kvs和now_kvs归并成new_kvs
+int LinkKVSMerge(const string &now_kvs, const string &rehash_kvs, string &new_kvs){
+    inode_id_t key = MemoryDecodeGetKey(now_kvs.data());
+    uint32_t key_num = 0;
+    uint32_t now_offset = sizeof(inode_id_t) + 8;
+    uint32_t rehash_offset = sizeof(inode_id_t) + 8;
+    uint64_t now_hashkey;
+    uint32_t now_value_len;
+    uint64_t rehash_hashkey;
+    uint32_t rehash_value_len;
+    while(now_offset < now_kvs.size() && rehash_offset < rehash_kvs.size()){
+        MemoryDecodeHashkeyValuelen(now_kvs.data() + now_offset, now_hashkey, now_value_len);
+        MemoryDecodeHashkeyValuelen(rehash_kvs.data() + rehash_offset, rehash_hashkey, rehash_value_len);
+        if(now_hashkey == rehash_hashkey){ //相等情况，取now_hashkey的值
+            new_kvs.append(now_kvs.data() + now_offset, 8 + 4 + now_value_len);
+            now_offset += (8 + 4 + now_value_len);
+            rehash_offset += (8 + 4 + rehash_value_len);
+            key_num++;
+        } else if (now_hashkey < rehash_hashkey) {
+            new_kvs.append(now_kvs.data() + now_offset, 8 + 4 + now_value_len);
+            now_offset += (8 + 4 + now_value_len);
+            key_num++;
+        } else {
+            new_kvs.append(rehash_kvs.data() + rehash_offset, 8 + 4 + rehash_value_len);
+            rehash_offset += (8 + 4 + rehash_value_len);
+            key_num++;
+        }
+    }
+    while(now_offset < now_kvs.size()){
+        MemoryDecodeHashkeyValuelen(now_kvs.data() + now_offset, now_hashkey, now_value_len);
+        new_kvs.append(now_kvs.data() + now_offset, 8 + 4 + now_value_len);
+        now_offset += (8 + 4 + now_value_len);
+        key_num++;
+    }
+    while(rehash_offset < rehash_kvs.size()){
+        MemoryDecodeHashkeyValuelen(rehash_kvs.data() + rehash_offset, rehash_hashkey, rehash_value_len);
+        new_kvs.append(rehash_kvs.data() + rehash_offset, 8 + 4 + rehash_value_len);
+        rehash_offset += (8 + 4 + rehash_value_len);
+        key_num++;
+    }
+    uint32_t key_len = new_kvs.size();
+    new_kvs.insert(0, &key_len, 4);
+    new_kvs.insert(0, &key_num, 4);
+    new_kvs.insert(0, &key, sizeof(inode_id_t));
+    return 0;
+}
+
+int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, string &kvs){
+    LinkNodeSearchResult res;
+    LinkNodeSearchKey(res, cur, key);
+    if(res.key_find){  //key存在，需要和kvs合并
+        uint32_t kvs_key_num, kvs_key_len;
+        MemoryDecodeGetKeyNumLen(kvs.data(), key, kvs_key_num, kvs_key_len);
+        bool kvs_is_bptree = kvs_key_num == 0;
+        if(res.value_is_bptree) { //新插入的kv是bptree，和kvs合并
+            if(!kvs_is_bptree){  // kvs不是Bptree，现有的res是bptree
+                assert(0); //暂不写
+            } else { // kvs是Bptree，现有的res是bptree
+                assert(0); //暂不写
+            }
+            // pointer_t bptree = cur->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
+            // //bptree 插入
+            // BptreeOp bop;
+            // bop.root = bptree;
+            // bop.res = bptree;
+            // BptreeInsert(bop, MurmurHash64(fname.data(), fname.size()), fname, value);
+            // op.AddBptreeOp(bop);
+            // if(bop.root != bop.res){  //修改根节点
+            //     cur->SetBufPersist(res.key_offset + 8 + 4, &bop.res, sizeof(pointer_t));
+            // }
+            return 0;
+        }
+        if(kvs_is_bptree){ //kvs是Bptree，现有的res不是bptree
+
+            return 0;
+        }
+        //kvs和现有的res都不是bptree；
+        uint32_t now_kv_len = sizeof(inode_id_t) + 4 + 4 + res.key_len;
+        string now_kvs(cur->buf + res.key_offset, now_kv_len);
+        string new_kvs;
+        LinkKVSMerge(now_kvs, kvs, new_kvs);
+        uint32_t add_len = new_kvs.size() - now_kv_len;
+        if(cur->GetFreeSpace() >= add_len) { //空间足够，可以插入
+            LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
+            new_node->CopyBy(cur);
+            uint32_t insert_offset = res.key_offset;
+            uint32_t need_move = cur->len - insert_offset - now_kv_len;
+            if(need_move > 0) {
+                new_node->SetBufNodrain(insert_offset + new_kvs.size(), cur->buf + insert_offset + now_kv_len, need_move);
+            }
+            new_node->SetBufNodrain(insert_offset, new_kvs.data(), new_kvs.size()); 
+            
+            new_node->SetNumAndLenNodrain(cur->num, cur->len + add_len);
+            new_node->Flush();
+            
+            LinkNodeUpdateNextPrev(new_node);
+            if(IS_INVALID_POINTER(new_node->prev)){  //更新根节点
+                op.res = NODE_GET_OFFSET(new_node);
+            }
+
+            op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
+            op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+
+            return 0;
+        } else {  //空间不足
+            if((new_kvs.size()) > LINK_NODE_CAPACITY){  //同pinode_id聚齐的kv大于一个LinkNode Size，转成B+tree;
+                inode_id_t temp_key;
+                uint32_t new_kvs_key_num, new_kvs_key_len;
+                MemoryDecodeGetKeyNumLen(new_kvs.data(), temp_key, new_kvs_key_num, new_kvs_key_len);
+                uint32_t need_len = new_kvs_key_len;
+                assert(need_len <= LEAF_NODE_CAPACITY);
+                BptreeLeafNode *root = AllocBptreeLeafNode();
+
+                root->SetBufNodrain(0, new_kvs.data() + sizeof(inode_id_t) + 8, new_kvs_key_len);
+                root->SetNumAndLenNodrain(new_kvs_key_num, new_kvs_key_len);
+                root->Flush();
+
+                op.add_leafnode_list.push_back(NODE_GET_OFFSET(root));
+
+                //处理转换成b+tree后的链表；
+                uint32_t remain_len = cur->len - res.key_len + 4; //加4是因为|----key(8B)---|---num(4B)---|----len(4B)----| 转成 |----key(8B)---|---num(4B) = 0 ---|---b+tree_pointer(8B)---|
+                char *remain_buf = new char[remain_len];   //剩余内容一定很少，转换成memory再操作
+                uint32_t first_move = res.key_offset;
+                if(first_move){
+                    memcpy(remain_buf, cur->buf, first_move);
+                }
+                MemoryEncodeKeyBptreePointer(remain_buf + first_move, key, NODE_GET_OFFSET(root));
+                uint32_t second_move = cur->len - (res.key_offset + sizeof(inode_id_t) + 8 + res.key_len);
+                if(second_move){
+                    memcpy(remain_buf + first_move + sizeof(inode_id_t) + 12, cur->buf + res.key_offset + sizeof(inode_id_t) + 8 + res.key_len, second_move);
+                }
+                int ret = LinkNodeTranBptreeDo(op, res, cur, remain_buf, remain_len);
+
+                delete[] remain_buf;
+                return ret;
+            }
+
+            //普通分裂,再插入
+            uint32_t new_beyond_buf_size = cur->len + add_len;
+            char *buf = new char[new_beyond_buf_size];
+            memcpy(buf, cur->buf, cur->len);
+            uint32_t insert_offset = res.key_offset;
+            uint32_t need_move = cur->len - insert_offset - now_kv_len;
+            if(need_move > 0) {
+                memmove(buf + insert_offset + new_kvs.size(), buf + insert_offset + now_kv_len, need_move);
+            } 
+            memcpy(buf + insert_offset, new_kvs.data(), new_kvs.size());
+
+            vector<pointer_t> res;
+            res.reserve(3);
+            LinkNodeSplit(buf, new_beyond_buf_size, res);
+            uint32_t res_size = res.size();
+
+            if(!IS_INVALID_POINTER(cur->next)){
+                LinkNode *new_node = static_cast<LinkNode *>(NODE_GET_POINTER(res[res_size - 1]));
+                new_node->SetNextNodrain(cur->next);
+            }
+            if(!IS_INVALID_POINTER(cur->prev)){
+                LinkNode *new_node = static_cast<LinkNode *>(NODE_GET_POINTER(res[0]));
+                new_node->SetPrevNodrain(cur->prev);
+            }
+
+            for(auto it : res){
+                op.add_linknode_list.push_back(it);
+                LinkNode *temp = static_cast<LinkNode *>(NODE_GET_POINTER(it));
+                temp->Flush();
+            }
+
+            if(!IS_INVALID_POINTER(cur->next)){
+                LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->next));
+                next_node->SetPrevPersist(NODE_GET_OFFSET(res[res_size - 1]));
+            }
+            if(!IS_INVALID_POINTER(cur->prev)){
+                LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
+                prev_node->SetNextPersist(NODE_GET_OFFSET(res[0]));
+            } else {
+                op.res = NODE_GET_OFFSET(res[0]);   //根节点替换
+            }
+            
+            op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+
+            delete[] buf;
+            return 0;
+        }
+    }
+    //key不存在，将kvs插入
+    uint32_t add_len = kvs.size();
+    if(cur->GetFreeSpace() >= add_len) { //空间足够，可以插入
+        LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
+        new_node->CopyBy(cur);
+        uint32_t insert_offset = res.key_offset;
+        uint32_t need_move = cur->len - insert_offset;
+        if(need_move > 0) {
+            new_node->SetBufNodrain(insert_offset + add_len, cur->buf + insert_offset, need_move);
+        }
+        new_node->SetBufNodrain(res.key_offset, kvs.data(), add_len); 
+
+        if(res.key_index == 0){ //插入的是最小值
+            new_node->SetMinkeyNodrain(key);
+        }
+        if(res.key_index == cur->num){ //插入的是最大值
+            new_node->SetMaxkeyNodrain(key);
+        }
+        
+        new_node->SetNumAndLenNodrain(cur->num + 1, cur->len + add_len);
+        new_node->Flush();
+
+        LinkNodeUpdateNextPrev(new_node);
+
+        if(IS_INVALID_POINTER(new_node->prev)){  //替换根节点
+            op.res = NODE_GET_OFFSET(new_node);
+        }
+
+        op.add_linknode_list.push_back(NODE_GET_OFFSET(new_node));
+        op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+
+        return 0;
+    } else {
+        if((add_len) > LINK_NODE_CAPACITY){  //单独一个KVS大于，LinkNode Size，转成B+tree;
+            assert(0); //不可能存在这种情况
+            return 0;
+        }
+
+        //普通分裂,再插入
+        uint32_t new_beyond_buf_size = cur->len + add_len;
+        char *buf = new char[new_beyond_buf_size];
+        memcpy(buf, cur->buf, cur->len);
+        uint32_t insert_offset = res.key_offset;
+        uint32_t need_move = cur->len - insert_offset;
+        if(need_move > 0) {
+            memmove(buf + add_len, buf + insert_offset, need_move);
+        } 
+        memcpy(buf + insert_offset, kvs.data(), add_len);
+
+        vector<pointer_t> res;
+        res.reserve(3);
+        LinkNodeSplit(buf, new_beyond_buf_size, res);
+        uint32_t res_size = res.size();
+
+        if(!IS_INVALID_POINTER(cur->next)){
+            LinkNode *new_node = static_cast<LinkNode *>(NODE_GET_POINTER(res[res_size - 1]));
+            new_node->SetNextNodrain(cur->next);
+        }
+        if(!IS_INVALID_POINTER(cur->prev)){
+            LinkNode *new_node = static_cast<LinkNode *>(NODE_GET_POINTER(res[0]));
+            new_node->SetPrevNodrain(cur->prev);
+        }
+
+        for(auto it : res){
+            op.add_linknode_list.push_back(it);
+            LinkNode *temp = static_cast<LinkNode *>(NODE_GET_POINTER(it));
+            temp->Flush();
+        }
+
+        if(!IS_INVALID_POINTER(cur->next)){
+            LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->next));
+            next_node->SetPrevPersist(NODE_GET_OFFSET(res[res_size - 1]));
+        }
+        if(!IS_INVALID_POINTER(cur->prev)){
+            LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
+            prev_node->SetNextPersist(NODE_GET_OFFSET(res[0]));
+        }
+        
+        op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
+        op.res = NODE_GET_OFFSET(res[0]);
+
+        delete[] buf;
+        return 0;
+    }
+}
+
+int RehashLinkListInsert(LinkListOp &op, const inode_id_t key, string &kvs){
+    pointer_t cur = op.root;
+    pointer_t prev = op.root;
+
+    LinkNode *cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
+    while(!IS_INVALID_POINTER(cur) && compare_inode_id(key, cur_node->min_key) >= 0) {
+        prev = cur;
+        cur = cur_node->next;
+        cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
+    }
+    pointer_t insert = prev;  //在该节点插入kv；
+    LinkNode *insert_node = static_cast<LinkNode *>(NODE_GET_POINTER(insert));
+    RehashLinkNodeInsert(op, insert_node, key, kvs);
+
     return 0;
 }
 

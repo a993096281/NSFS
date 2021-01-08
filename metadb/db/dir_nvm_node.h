@@ -333,7 +333,7 @@ int LinkListDelete(LinkListOp &op, const inode_id_t key, const Slice &fname);
 
 //将kvs转成节点，并返回根节点，节点个数
 int MemoryTranToNVMLinkNode(vector<string> &kvs, pointer_t &root, uint32_t &node_num);  //link 转成bptree时调用
-
+int RehashLinkListInsert(LinkListOp &op, const inode_id_t key, string &kvs);   //rehash时迁移kvs，kvs可能是一个key，但是多个fname
 //////
 
 ////// bptree 操作

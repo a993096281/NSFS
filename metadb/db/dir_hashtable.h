@@ -129,6 +129,7 @@ private:
     static void SecondHashDoRehashJob(void *arg);
     void SecondHashDoRehashWork();
     void MoveEntryToRehash(HashVersion *version, uint32_t index, HashVersion *rehash_version);
+    int RehashInsertKvs(HashVersion *version, uint32_t index, const inode_id_t key, string &kvs);
 };
 
 

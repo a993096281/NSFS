@@ -134,15 +134,15 @@ int DirHashTable::HashEntryInsertKV(HashVersion *version, uint32_t index, const 
     version->rwlock_[index].WriteLock();
 
     if(IS_INVALID_POINTER(root)) { 
-        LinkNode *root = AllocLinkNode();
+        LinkNode *root_node = AllocLinkNode();
         LinkListOp op;
-        op.root = root;
-        op.res = op.root;
-        op.add_linknode_list.push_back(NODE_GET_OFFSET(root));
+        op.root = NODE_GET_OFFSET(root_node);
+        op.res = NODE_GET_OFFSET(root_node);
+        op.add_linknode_list.push_back(NODE_GET_OFFSET(root_node));
         res = LinkListInsert(op, key, fname, value);
         HashEntryDealWithOp(version, index, op);
         
-    } else {  //一级hash
+    } else {  //Linklist
         
         LinkListOp op;
         op.root = root;
@@ -178,7 +178,7 @@ int DirHashTable::HashEntryGetKV(HashVersion *version, uint32_t index, const ino
     //暂时简单处理，由于空间分配是往后分配，提前删除没有影响；
     if(IS_INVALID_POINTER(root)) { 
         return 2; //未找到
-    } else {  //一级hash
+    } else {  //linklist
         LinkNode *root_node = static_cast<LinkNode *>(NODE_GET_POINTER(root));
         return LinkListGet(root_node, key, fname, value);
     }
@@ -216,7 +216,7 @@ int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key
     version->rwlock_[index].WriteLock();
     if(IS_INVALID_POINTER(root)) { 
         res = 2; //未找到
-    } else {  //一级hash
+    } else {  //linklist
         LinkListOp op;
         op.root = root;
         op.res = op.root;
@@ -376,6 +376,34 @@ void DirHashTable::SecondHashDoRehashWork(){
     old_version->Unref();   //删除旧version
 }
 
+//rehash时迁移kvs；
+int DirHashTable::RehashInsertKvs(HashVersion *version, uint32_t index, const inode_id_t key, string &kvs){
+    NvmHashEntry *entry = &(version->buckets_[index]);
+    pointer_t root = entry->root;
+    int res = -1;
+    version->rwlock_[index].WriteLock();
+
+    if(IS_INVALID_POINTER(root)) { 
+        LinkNode *root_node = AllocLinkNode();
+        LinkListOp op;
+        op.root = NODE_GET_OFFSET(root_node);
+        op.res = NODE_GET_OFFSET(root_node);
+        op.add_linknode_list.push_back(NODE_GET_OFFSET(root_node));
+        res = LinkListInsert(op, key, fname, value);
+        HashEntryDealWithOp(version, index, op);
+        
+    } else {  //一级hash
+        
+        LinkListOp op;
+        op.root = root;
+        op.res = op.root;
+        res = LinkListInsert(op, key, fname, value);
+        HashEntryDealWithOp(version, index, op);
+    }
+    version->rwlock_[index].Unlock();
+    return res;
+}
+
 void DirHashTable::MoveEntryToRehash(HashVersion *version, uint32_t index, HashVersion *rehash_version){
     version->rwlock_[index].WriteLock();   //
     NvmHashEntry *entry = &(version->buckets_[index]);
@@ -383,17 +411,24 @@ void DirHashTable::MoveEntryToRehash(HashVersion *version, uint32_t index, HashV
     pointer_t cur = entry->root;
     LinkNode *cur_node;
     inode_id_t key;
+    uint32_t key_num, key_len, kv_len;
     uint32_t key_index;
     pointer_t value;
+    string kvs;
     int res = 0;
     while(!IS_INVALID_POINTER(cur)) {
         cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
         uint32_t offset = 0;
         for(uint16_t i = 0; i < cur_node->num; i++){
-            
-            key = cur_node->entry[i].key;
-            value = cur_node->entry[i].pointer;
+            cur_node->DecodeBufGetKeyNumLen(offset, key, key_num, key_len);
+            if(key_num == 0){  //kv是bptree
+                kv_len = sizeof(inode_id_t) + 4 + 8;
+            } else {
+                kv_len = sizeof(inode_id_t) + 4 + 4 + key_len;
+            }
+            kvs.assign(cur_node->buf + offset, kv_len);
             key_index = hash_id(key, rehash_version->capacity_);
+
             //res = HashEntryOnlyInsertKV(rehash_version, key_index, key, value);  //这个插入超麻烦
 
         }
