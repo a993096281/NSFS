@@ -8,9 +8,11 @@
 #ifndef _METADB_ITERATOR_H_
 #define _METADB_ITERATOR_H_
 
+#include <string>
 #include "metadb/slice.h"
 #include "metadb/inode.h"
 
+using namespace std;
 namespace metadb {
 
 class Iterator {
@@ -19,12 +21,13 @@ public:
     virtual ~Iterator();
 
     virtual bool Valid() const = 0;
-    virtual void Seek(const Slice& target) = 0;
+    //virtual void Seek(const Slice& target) = 0;
     virtual void SeekToFirst() = 0;
     virtual void SeekToLast() = 0;
     virtual void Next() = 0;
     virtual void Prev() = 0;
-    virtual Slice key() const = 0;
+    virtual string fname() const = 0;
+    virtual uint64_t hash_fname() const = 0;
     virtual inode_id_t value() const = 0;
 
 };

@@ -121,6 +121,7 @@ private:
     void HashEntryDealWithOp(HashVersion *version, uint32_t index, LinkListOp &op);
     int HashEntryGetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
     int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname);
+    Iterator *HashEntryGetIterator(HashVersion *version, uint32_t index, const inode_id_t target);
 
     inline bool NeedHashEntryToSecondHash(NvmHashEntry *entry);
     inline bool NeedSecondHashDoRehash();

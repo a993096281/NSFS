@@ -7,6 +7,7 @@
 
 #include "dir_hashtable.h"
 #include "metadb/debug.h"
+#include "dir_iterator.h"
 
 namespace metadb {
 
@@ -128,8 +129,8 @@ int DirHashTable::HashEntryInsertKV(HashVersion *version, uint32_t index, const 
     int res = -1;
 
     if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
-
-        return 0;
+        DirHashTable *second_hash = entry->GetSecondHashAddr();
+        return second_hash->Put(key, fname, value);
     }
     version->rwlock_[index].WriteLock();
 
@@ -172,7 +173,8 @@ int DirHashTable::HashEntryGetKV(HashVersion *version, uint32_t index, const ino
     pointer_t root = entry->root;
     int res = -1;
     if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
-        return 0;
+        DirHashTable *second_hash = entry->GetSecondHashAddr();
+        return second_hash->Get(key, fname, value);
     }
      //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点是一个问题，延时删除可行或引用计数，
     //暂时简单处理，由于空间分配是往后分配，提前删除没有影响；
@@ -183,6 +185,24 @@ int DirHashTable::HashEntryGetKV(HashVersion *version, uint32_t index, const ino
         return LinkListGet(root_node, key, fname, value);
     }
     return 0;
+}
+
+Iterator *DirHashTable::HashEntryGetIterator(HashVersion *version, uint32_t index, const inode_id_t target){
+    NvmHashEntry *entry = &(version->buckets_[index]);
+    pointer_t root = entry->root;
+    int res = -1;
+    if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
+        return nullptr;
+    }
+     //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点是一个问题，延时删除可行或引用计数，
+    //暂时简单处理，由于空间分配是往后分配，提前删除没有影响；
+    if(IS_INVALID_POINTER(root)) { 
+        return nullptr; //未找到
+    } else {  //linklist
+        LinkNode *root_node = static_cast<LinkNode *>(NODE_GET_POINTER(root));
+        return LinkListGetIterator(root_node, target);
+    }
+    return nullptr;
 }
 
 int DirHashTable::Get(const inode_id_t key, const Slice &fname, inode_id_t &value){
@@ -211,7 +231,8 @@ int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key
     pointer_t root = entry->root;
     int res = -1;
     if(IS_SECOND_HASH_POINTER(root)) {  //二级hash
-        return 0;
+        DirHashTable *second_hash = entry->GetSecondHashAddr();
+        return second_hash->Delete(key, fname);
     }
     version->rwlock_[index].WriteLock();
     if(IS_INVALID_POINTER(root)) { 
@@ -445,7 +466,31 @@ void DirHashTable::MoveEntryToRehash(HashVersion *version, uint32_t index, HashV
 
 
 Iterator* DirHashTable::DirHashTableGetIterator(const inode_id_t target){
+        bool is_rehash = false;
+        HashVersion *version;
+        HashVersion *rehash_version;
+        GetVersionAndRefByRead(is_rehash, &version, &rehash_version);
+        Iterator* rehash_it = nullptr;
+        Iterator* vesion_it = nullptr;
+        if(is_rehash){  //正在rehash，先在rehash_version查找，再查找version
+            uint32_t index = hash_id(target, rehash_version->capacity_);
+            
+            rehash_it = HashEntryGetIterator(rehash_version, index, target);
+            
+            rehash_version->Unref();
+        }
+        uint32_t index = hash_id(target, version->capacity_);
         
+        vesion_it = HashEntryGetIterator(version, index, target);
+        
+        version->Unref();
+        if(rehash_it != nullptr && vesion_it != nullptr){  //两版本都不为空，合并iterator
+            Iterator *two_it[2];
+            two_it[0] = rehash_it;
+            two_it[1] = vesion_it;
+            return new MergingIterator(two_it, 2);
+        }
+        return (rehash_version != nullptr) ? rehash_it : vesion_it;   //
 }
 
 

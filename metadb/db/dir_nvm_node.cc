@@ -583,7 +583,8 @@ int LinkListGet(LinkNode *root, const inode_id_t key, const Slice &fname, inode_
     LinkNodeSearch(res, search_node, key, fname);
     if(res.key_find){
         if(res.value_is_bptree){  //bptree中查找
-
+            pointer_t bptree = search_node->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
+            return BptreeGet(bptree, MurmurHash64(fname.data(), fname.size()), fname, value);
         } else if (res.fname_find) {
             uint32_t get_offset = res.fname_offset + 8 + 4 + fname.size();
             value = *static_cast<inode_id_t *>(search_node->buf + get_offset);
@@ -1105,8 +1106,43 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
             return 0;
         }
         if(kvs_is_bptree){ //kvs是Bptree，现有的res不是bptree
+            pointer_t bptree = *static_cast<pointer_t *>(kvs.data() + sizeof(inode_id_t) + 4);
+            BptreeOp bop;
+            bop.root = bptree;
+            bop.res = bptree;
 
-            return 0;
+            uint64_t hash_fname;
+            uint32_t value_len;
+            uint32_t offset = res.key_offset + sizeof(inode_id_t) + 4 + 4;
+            Slice fname;
+            inode_id_t value;
+            for(uint32_t i = 0; i < res.key_num; i++){
+                cur->DecodeBufGetHashfnameAndLen(offset, hash_fname, value_len);
+                fname = Slice(cur->buf + offset + 8, value_len - sizeof(inode_id_t));
+                cur->DecodeBufGetKey(offset + 8 + value_len - sizeof(inode_id_t), value);
+                BptreeInsert(bop, hash_fname, fname, value);
+                if(bop.res != bop.root){
+                    bop.root = bop.res;
+                    bop.res = bop.root;
+                }
+            }
+            op.AddBptreeOp(bop);
+
+            uint32_t remain_len = cur->len - res.key_len + 4; //加4是因为|----key(8B)---|---num(4B)---|----len(4B)----| 转成 |----key(8B)---|---num(4B) = 0 ---|---b+tree_pointer(8B)---|
+            char *remain_buf = new char[remain_len];   //剩余内容一定很少，转换成memory再操作
+            uint32_t first_move = res.key_offset;
+            if(first_move){
+                memcpy(remain_buf, cur->buf, first_move);
+            }
+            MemoryEncodeKeyBptreePointer(remain_buf + first_move, key, bop.res);
+            uint32_t second_move = cur->len - (res.key_offset + sizeof(inode_id_t) + 8 + res.key_len);
+            if(second_move){
+                memcpy(remain_buf + first_move + sizeof(inode_id_t) + 12, cur->buf + res.key_offset + sizeof(inode_id_t) + 8 + res.key_len, second_move);
+            }
+            int ret = LinkNodeTranBptreeDo(op, res, cur, remain_buf, remain_len);
+
+            delete[] remain_buf;
+            return ret;
         }
         //kvs和现有的res都不是bptree；
         uint32_t now_kv_len = sizeof(inode_id_t) + 4 + 4 + res.key_len;
@@ -2325,6 +2361,50 @@ int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname){
     return 0;
 }
 
+int BptreeGetLinkHeadNode(pointer_t root, pointer_t &head){
+    pointer_t cur = root;
+    while(!IS_INVALID_POINTER(cur)){
+        if(IsIndexNode(cur)){  //中间节点查找
+            BptreeIndexNode *cur_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(cur));
+            cur = cur_node->entry[0].pointer;
+        }
+        else{    //叶子节点查找
+            head = cur;
+            return 0;
+        }
+    }
+    return 0;
+}
+
+Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target){
+    pointer_t cur = NODE_GET_OFFSET(root_node);
+    pointer_t prev = cur;
+
+    LinkNode *cur_node = root_node;
+    while(!IS_INVALID_POINTER(cur) && compare_inode_id(target, cur_node->min_key) >= 0) {
+        prev = cur;
+        cur = cur_node->next;
+        cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
+    }
+    pointer_t search = prev;  //在该节点查找kv；
+    LinkNode *search_node = static_cast<LinkNode *>(NODE_GET_POINTER(search));
+
+    LinkNodeSearchResult res;
+    LinkNodeSearchKey(res, search_node, target);
+    if(!res.key_find) return nullptr;
+
+    if(res.value_is_bptree){  //bptree
+        pointer_t bptree = search_node->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
+        pointer_t head = INVALID_POINTER;
+        BptreeGetLinkHeadNode(bptree, head);
+        if(IS_INVALID_POINTER(head)) return nullptr;
+        BptreeLeafNode *head_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(head));
+
+        return new BptreeIterator(head_node);
+    }
+    //linklist
+    return new LinkNodeIterator(search, res.key_offset, res.key_num, res.key_len);
+}
 
 //////
 

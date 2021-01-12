@@ -11,10 +11,15 @@
 #include "format.h"
 #include "metadb/slice.h"
 #include "metadb/inode.h"
+#include "metadb/iterator.h"
 
 using namespace std;
 
 namespace metadb {
+
+class LinkNodeIterator;
+class BptreeIterator;
+class EmptyIterator;
 
 //Bptree 划分范围：key1，pointer1；key2，pointer2；  pointer1 -> key1 <= x < key2;   pointer2 -> key2 <= x <= key3
 struct IndexNodeEntry {
@@ -361,8 +366,11 @@ BptreeLeafNode *AllocBptreeLeafNode();
 int BptreeInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, const inode_id_t value);
 int BptreeGet(pointer_t root, const uint64_t hash_key, const Slice &fname, inode_id_t &value);
 int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname);
-
+int BptreeGetLinkHeadNode(pointer_t root, pointer_t &head);
 //////
+
+
+Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target);
 } // namespace name
 
 
