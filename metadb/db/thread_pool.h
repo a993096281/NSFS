@@ -10,6 +10,7 @@
 #include <deque>
 #include <vector>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "../util/lock.h"
 
@@ -63,7 +64,7 @@ public:
             }
             void (*function)(void*) = deque_.front().function;
             void* arg = deque_.front().arg;
-            queue_.pop_front();
+            deque_.pop_front();
             mu_.Unlock();
             (*function)(arg);
         }

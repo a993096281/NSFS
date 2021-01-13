@@ -17,8 +17,8 @@
 #include "metadb/inode.h"
 #include "metadb/iterator.h"
 #include "format.h"
-#include "util/rwlock.h"
-#include "util/lock.h"
+#include "../util/rwlock.h"
+#include "../util/lock.h"
 #include "nvm_node_allocator.h"
 #include "thread_pool.h"
 

@@ -16,7 +16,7 @@
 #include "metadb/iterator.h"
 #include "inode_hashtable.h"
 #include "inode_file.h"
-#include "util/lock.h"
+#include "../util/lock.h"
 #include "nvm_file_allocator.h"
 
 using namespace std;

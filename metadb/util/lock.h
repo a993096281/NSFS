@@ -11,6 +11,8 @@
 
 namespace metadb {
 
+class CondVar;
+
 class Mutex {
 public:
     Mutex(){
@@ -31,7 +33,11 @@ public:
     };
 
 private:
-      pthread_mutex_t mu_;
+    friend class ConVar;
+    pthread_mutex_t mu_;
+
+    Mutex(const Mutex&) = delete;
+    Mutex& operator=(const Mutex&) = delete;
 
 };
 
