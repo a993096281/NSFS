@@ -73,11 +73,20 @@ public:
     }
 
     virtual ~HashVersion() {
+        if(buckets_ != nullptr){   //正常退出
+            for(uint32_t i = 0; i < capacity_; i++){
+                if(IS_SECOND_HASH_POINTER(buckets_[i].root)) {
+                    DirHashTable *second_hash = buckets_[i].GetSecondHashAddr();
+                    delete second_hash;
+                }
+            }
+        }
         delete[] rwlock_;
     }
 
     void FreeNvmSpace(){
         node_allocator->Free(buckets_, sizeof(NvmHashEntry) * capacity_);
+        buckets_ = nullptr;
     }
 
     void Ref() {

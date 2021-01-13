@@ -6,19 +6,31 @@
  */
 
 #include "metadb.h"
+#include "nvm_node_allocator.h"
+#include "nvm_file_allocator.h"
+#include "thread_pool.h"
 
 namespace metadb {
 
 int DB::Open(const Option &option, const std::string &name, DB **dbptr){
+    *dbptr = new MetaDB(option, name);
     return 0;
 }
 
-MetaDB::MetaDB(const Option &option, const std::string &name){
-
+MetaDB::MetaDB(const Option &option, const std::string &name) : option_(option), db_name_(name) {
+    dir_db_ = new DirDB(option);
+    inode_db_ = new InodeDB(option, option.INODE_MAX_ZONE_NUM);
+    InitNVMNodeAllocator(option.node_allocator_path, option.node_allocator_size);
+    InitNVMFileAllocator(option.file_allocator_path, option.file_allocator_size);
+    InitThreadPool(option.thread_pool_count);
 }
 
 MetaDB::~MetaDB(){
-
+    if(thread_pool) delete thread_pool;
+    delete dir_db_;
+    delete inode_db_;
+    if(node_allocator) delete node_allocator;
+    if(file_allocator) delete file_allocator;
 }
 int MetaDB::DirPut(const inode_id_t key, const Slice &fname, const inode_id_t value){
     return dir_db_->DirPut(key, fname, value);
@@ -40,8 +52,16 @@ int MetaDB::InodePut(const inode_id_t key, const Slice &value){
     return inode_db_->InodePut(key, value);
 }
 
+int MetaDB::InodeUpdate(const inode_id_t key, const Slice &new_value){
+    return inode_db_->InodeUpdate(key, new_value);
+}
+
 int MetaDB::InodeGet(const inode_id_t key, std::string &value){
     return inode_db_->InodeGet(key, value);
+}
+
+int MetaDB::InodeDelete(const inode_id_t key){
+    return inode_db_->InodeDelete(key);
 }
 
 }

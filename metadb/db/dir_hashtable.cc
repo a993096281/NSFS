@@ -394,6 +394,7 @@ void DirHashTable::SecondHashDoRehashWork(){
     version_lock_.Unlock();
 
     old_version->Unref();   //解除本函数的调用
+    old_version->FreeNvmSpace();
     old_version->Unref();   //删除旧version
 }
 
@@ -410,15 +411,14 @@ int DirHashTable::RehashInsertKvs(HashVersion *version, uint32_t index, const in
         op.root = NODE_GET_OFFSET(root_node);
         op.res = NODE_GET_OFFSET(root_node);
         op.add_linknode_list.push_back(NODE_GET_OFFSET(root_node));
-        res = LinkListInsert(op, key, fname, value);
+        res = RehashLinkListInsert(op, key, kvs);
         HashEntryDealWithOp(version, index, op);
         
     } else {  //一级hash
-        
         LinkListOp op;
         op.root = root;
         op.res = op.root;
-        res = LinkListInsert(op, key, fname, value);
+        res = RehashLinkListInsert(op, key, kvs);
         HashEntryDealWithOp(version, index, op);
     }
     version->rwlock_[index].Unlock();
@@ -449,9 +449,7 @@ void DirHashTable::MoveEntryToRehash(HashVersion *version, uint32_t index, HashV
             }
             kvs.assign(cur_node->buf + offset, kv_len);
             key_index = hash_id(key, rehash_version->capacity_);
-
-            //res = HashEntryOnlyInsertKV(rehash_version, key_index, key, value);  //这个插入超麻烦
-
+            res = RehashInsertKvs(rehash_version, key_index, kvs);  //这个插入超麻烦
         }
         free_list.push_back(cur);
         cur = cur_node->next;

@@ -1,15 +1,23 @@
 CC = gcc
 CXX = g++
-LDFLAGS = -pthread -Wno-pointer-to-int-cast -g 
+LDFLAGS = -pthread -g 
 DEFS = 
 CFLAGS = -I./include
 CFLAGS += $(DEFS)
 AR = ar
 ARFLAGS = rs
 LIB_SOURCES =  \
+	db/dir_db.cc  \
+	db/dir_hashtable.cc  \
+	db/dir_nvm_node.cc  \
+	db/inode_db.cc  \
+	db/inode_hashtable.cc  \
+	db/inode_zone.cc  \
 	db/metadb.cc  \
+	db/nvm_file_allocator.cc  \
+	db/nvm_node_allocator.cc  \
+	db/thread_pool.cc  
 	
-
 TEST_TARGET = tests/db_bench \
 
 LIBOBJECTS = $(LIB_SOURCES:.cc=.o)
@@ -32,7 +40,7 @@ clean:
 
 $(LIBOBJECTS): 
 	for sou_file in $(TARGET_OBJS) ; do \
-	$(CXX) $(CFLAGS) $(LDFLAGS) -c $$sou_file.c -o $$sou_file.o; \
+	$(CXX) $(CFLAGS) $(LDFLAGS) -c $$sou_file.cc -o $$sou_file.o; \
 	done;
 
 $(LIBRARY) : $(LIBOBJECTS)
@@ -41,7 +49,7 @@ $(LIBRARY) : $(LIBOBJECTS)
 
 $(TEST_TARGET) :
 	for test_file in $(TEST_TARGET) ; do \
-	$(CXX) $(CFLAGS) $$test_file.c -o $$test_file $(LIBRARY) $(LDFLAGS); \
+	$(CXX) $(CFLAGS) $$test_file.cc -o $$test_file $(LIBRARY) $(LDFLAGS); \
 	done;
 benchmark: clean $(LIBRARY)
 	$(CXX) $(CFLAGS) tests/db_bench.c $(LIBRARY) -o db_bench $(LDFLAGS);

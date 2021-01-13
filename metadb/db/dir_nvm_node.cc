@@ -4,9 +4,13 @@
  * @Contact     : 993096281@qq.com
  * @Description : 
  */
+
+#include <queue>
+
 #include "dir_nvm_node.h"
 #include "nvm_node_allocator.h"
 
+using namespace std;
 namespace metadb {
 
 LinkNode *AllocLinkNode(){
@@ -1080,6 +1084,28 @@ int LinkKVSMerge(const string &now_kvs, const string &rehash_kvs, string &new_kv
     return 0;
 }
 
+//将整棵Bptree的节点加入bop的free链中，层序遍历
+void AddBptreeNodeToBop(pointer_t root, BptreeOp &op){
+    pointer_t cur = root;
+    uint32_t index = 0;
+    queue<pointer_t> queues;
+    queues.push(cur);
+    while(!queues.empty() && !IS_INVALID_POINTER(queues.front())){
+        cur = queues.front();
+        if(IsIndexNode(cur)){  //中间节点查找
+            BptreeIndexNode *cur_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(cur));
+            for(uint32_t i = 0; i < cur_node->num; i++){
+                queues.push(cur_node->entry[i].pointer);
+            }
+            op.free_indexnode_list.push_back(cur);
+        }
+        else{    //叶子节点查找
+            op.free_leafnode_list.push_back(cur);
+        }
+        queues.pop();
+    }
+}
+
 int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, string &kvs){
     LinkNodeSearchResult res;
     LinkNodeSearchKey(res, cur, key);
@@ -1089,24 +1115,67 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
         bool kvs_is_bptree = kvs_key_num == 0;
         if(res.value_is_bptree) { //新插入的kv是bptree，和kvs合并
             if(!kvs_is_bptree){  // kvs不是Bptree，现有的res是bptree
-                assert(0); //暂不写
+                pointer_t bptree = cur->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
+                BptreeOp bop;
+                bop.root = bptree;
+                bop.res = bptree;
+
+                uint64_t hash_fname;
+                uint32_t value_len;
+                uint32_t offset = sizeof(inode_id_t) + 4 + 4;
+                Slice fname;
+                inode_id_t value;
+                for(uint32_t i = 0; i < res.key_num; i++){
+                    MemoryDecodeHashkeyValuelen(kvs.data() + offset, hash_fname, value_len);
+                    fname = Slice(kvs.data() + offset + 8, value_len - sizeof(inode_id_t));
+                    value = MemoryDecodeGetKey(kvs.data() + offset + 8 + value_len - sizeof(inode_id_t));
+                    
+                    BptreeOnlyInsert(bop, hash_fname, fname, value);
+                    if(bop.res != bop.root){
+                        bop.root = bop.res;
+                        bop.res = bop.root;
+                    }
+                }
+                op.AddBptreeOp(bop);
+                if(bop.res != bptree){  //直接更新根节点
+                    cur->SetBufPersist(res.key_offset + sizeof(inode_id_t) + 4, &bop.res, 8);
+                }
+                return 0;
+                
             } else { // kvs是Bptree，现有的res是bptree
-                assert(0); //暂不写
+                pointer_t res_bptree = cur->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
+                pointer_t kvs_bptree = *static_cast<const pointer_t *>(kvs.data() + sizeof(inode_id_t) + 4);
+                BptreeOp bop;
+                bop.root = kvs_bptree;
+                bop.res = kvs_bptree;
+
+                pointer_t head = INVALID_POINTER;
+                BptreeGetLinkHeadNode(res_bptree, head);
+                BptreeLeafNode *head_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(head));
+                Iterator * it = new BptreeIterator(head_node);
+                uint64_t hash_fname;
+                Slice fname;
+                inode_id_t value;
+                for(it->SeekToFirst(); it->Valid(); it->Next()){
+                    hash_fname = it->hash_fname();
+                    fname = it->fname();
+                    value = it->value();
+                    BptreeInsert(bop, hash_fname, fname, value);
+                    if(bop.res != bop.root){
+                        bop.root = bop.res;
+                        bop.res = bop.root;
+                    }
+                }
+                delete it;
+                cur->SetBufPersist(res.key_offset + sizeof(inode_id_t) + 4, &bop.res, 8);   //更新根节点
+                AddBptreeNodeToBop(res_bptree, bop);
+                op.AddBptreeOp(bop);
+                return 0;
             }
-            // pointer_t bptree = cur->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
-            // //bptree 插入
-            // BptreeOp bop;
-            // bop.root = bptree;
-            // bop.res = bptree;
-            // BptreeInsert(bop, MurmurHash64(fname.data(), fname.size()), fname, value);
-            // op.AddBptreeOp(bop);
-            // if(bop.root != bop.res){  //修改根节点
-            //     cur->SetBufPersist(res.key_offset + 8 + 4, &bop.res, sizeof(pointer_t));
-            // }
             return 0;
         }
         if(kvs_is_bptree){ //kvs是Bptree，现有的res不是bptree
-            pointer_t bptree = *static_cast<pointer_t *>(kvs.data() + sizeof(inode_id_t) + 4);
+            pointer_t bptree = *static_cast<const pointer_t *>(kvs.data() + sizeof(inode_id_t) + 4);
             BptreeOp bop;
             bop.root = bptree;
             bop.res = bptree;
@@ -2359,6 +2428,15 @@ int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname){
     }
 
     return 0;
+}
+
+int BptreeOnlyInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, const inode_id_t value){
+    BptreeSearchResult res;
+    BptreeSearch(res, op.root, hash_key);
+    if(res.key_find){ //key存在
+        return 2;
+    }
+    return BptreeInsert(op, hash_key, fname, value);
 }
 
 int BptreeGetLinkHeadNode(pointer_t root, pointer_t &head){

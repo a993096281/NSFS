@@ -13,6 +13,7 @@
 #include "metadb/slice.h"
 #include "metadb/inode.h"
 #include "metadb/iterator.h"
+#include "dir_hashtable.h"
 
 namespace metadb {
 
@@ -26,7 +27,8 @@ public:
     virtual int DirDelete(const inode_id_t key, const Slice &fname);
     virtual Iterator* DirGetIterator(const inode_id_t target);
 private:
-    
+    const Option option_;
+    DirHashTable *hashtable_;
 };
 
 

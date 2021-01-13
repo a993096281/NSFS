@@ -367,6 +367,7 @@ int BptreeInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, cons
 int BptreeGet(pointer_t root, const uint64_t hash_key, const Slice &fname, inode_id_t &value);
 int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname);
 int BptreeGetLinkHeadNode(pointer_t root, pointer_t &head);
+int BptreeOnlyInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, const inode_id_t value);  //只插入，若已存在，则不修改
 //////
 
 

@@ -13,12 +13,13 @@
 #include "metadb/slice.h"
 #include "metadb/inode.h"
 #include "metadb/iterator.h"
+#include "inode_zone.h"
 
 namespace metadb {
 
 class InodeDB {
 public:
-    InodeDB(const Option &option);
+    InodeDB(const Option &option, uint64_t capacity);
     virtual ~InodeDB();
 
     virtual int InodePut(const inode_id_t key, const Slice &value);
@@ -26,7 +27,11 @@ public:
     virtual int InodeGet(const inode_id_t key, std::string &value);
     virtual int InodeDelete(const inode_id_t key);
 private:
-    
+    const Option option_;
+    InodeZone *zones_;
+    uint64_t capacity_;
+
+    uint32_t hash_zone_id(const inode_id_t key);
 };
 
 

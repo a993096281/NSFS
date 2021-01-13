@@ -16,7 +16,7 @@ namespace metadb {
 char *file_pool_pointer = nullptr;
 NVMFileAllocator *file_allocator = nullptr;
 
-int InitNVMNodeAllocator(const std::string path, uint64_t size){
+int InitNVMFileAllocator(const std::string path, uint64_t size){
     file_allocator = new NVMFileAllocator(path, size);
     file_pool_pointer = node_allocator->GetPmemAddr();
     return 0;

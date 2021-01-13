@@ -9,7 +9,29 @@
 
 namespace metadb {
 
+DirDB::DirDB(const Option &option) : option_(option) {
+    hashtable_ = new DirHashTable(option, 1, option_.DIR_FIRST_HASH_MAX_CAPACITY);
+}
 
+DirDB::~DirDB(){
+    delete hashtable_;
+}
+
+int DirDB::DirPut(const inode_id_t key, const Slice &fname, const inode_id_t value){
+    return hashtable_->Put(key, fname, value);
+}
+
+int DirDB::DirGet(const inode_id_t key, const Slice &fname, inode_id_t &value){
+    return hashtable_->Get(key, fname, value);
+}
+
+int DirDB::DirDelete(const inode_id_t key, const Slice &fname){
+    return hashtable_->Delete(key, fname);
+}
+
+Iterator* DirDB::DirGetIterator(const inode_id_t target){
+    return hashtable_->DirHashTableGetIterator(target);
+}
 
 
 } // namespace name
