@@ -33,7 +33,7 @@ public:
     };
 
 private:
-    friend class ConVar;
+    friend class CondVar;
     pthread_mutex_t mu_;
 
     Mutex(const Mutex&) = delete;

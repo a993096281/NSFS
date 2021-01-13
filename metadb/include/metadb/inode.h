@@ -30,7 +30,7 @@ static inline int compare_inode_id(inode_id_t a, inode_id_t b) {
 
 static inline uint64_t MurmurHash64(const void * key, int len, uint64_t seed = 123)
 {
-    const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
+    const uint64_t m = 0xc6a4a7935bd1e995;
     const int r = 47;
 
     uint64_t h = seed ^ (len * m);

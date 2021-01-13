@@ -74,22 +74,22 @@ struct LinkNode {
     }
 
     void DecodeBufGetKey(uint32_t offset, inode_id_t &key){
-        key = *static_cast<inode_id_t *>(buf + offset);
+        key = *reinterpret_cast<inode_id_t *>(buf + offset);
     }
 
     void DecodeBufGetKeyNumLen(uint32_t offset, inode_id_t &key, uint32_t &key_num, uint32_t &key_len){
-        key = *static_cast<inode_id_t *>(buf + offset);
-        key_num = *static_cast<uint32_t *>(buf + offset + sizeof(inode_id_t));
-        key_len = *static_cast<uint32_t *>(buf + offset + sizeof(inode_id_t) + 4);
+        key = *reinterpret_cast<inode_id_t *>(buf + offset);
+        key_num = *reinterpret_cast<uint32_t *>(buf + offset + sizeof(inode_id_t));
+        key_len = *reinterpret_cast<uint32_t *>(buf + offset + sizeof(inode_id_t) + 4);
     }
 
     void DecodeBufGetHashfnameAndLen(uint32_t offset, uint64_t &hash_fname, uint32_t &value_len){
-        hash_fname = *static_cast<uint64_t *>(buf + offset);
-        value_len = *static_cast<uint32_t *>(buf + offset + 8);
+        hash_fname = *reinterpret_cast<uint64_t *>(buf + offset);
+        value_len = *reinterpret_cast<uint32_t *>(buf + offset + 8);
     }
 
     pointer_t DecodeBufGetBptree(uint32_t offset) {
-        return *static_cast<pointer_t *>(buf + offset);
+        return *reinterpret_cast<pointer_t *>(buf + offset);
     }
 
     void Flush(){
@@ -300,7 +300,6 @@ struct BptreeLeafNode {
 };
 
 ////// LinkList 操作
-struct BptreeOp;
 struct LinkListOp {
     pointer_t root;   //输入的root节点
     vector<pointer_t> add_linknode_list;
