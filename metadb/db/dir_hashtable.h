@@ -26,6 +26,8 @@ using namespace std;
 
 namespace metadb {
 
+class DirHashTable;
+
 struct NvmHashEntry {       //如果root执向二级hash地址，则后面8字节是内存类DirHashTable地址；
     pointer_t root;  //链根节点,只存偏移
     uint32_t node_num;   //LinkNode num
@@ -51,7 +53,7 @@ struct NvmHashEntry {       //如果root执向二级hash地址，则后面8字�
     }
     
     void *GetSecondHashAddr(){
-        uint64_t ptr = *static_cast<uint64_t *>(&node_num);
+        uint64_t ptr = *reinterpret_cast<uint64_t *>(&node_num);
         return reinterpret_cast<void *>(ptr);
     }
 };                    
@@ -67,7 +69,7 @@ public:
     HashVersion(uint64_t capacity) {
         capacity_ = capacity;
         rwlock_ = new RWLock[capacity];
-        buckets_ = node_allocator->AllocateAndInit(sizeof(NvmHashEntry) * capacity, 0);
+        buckets_ = static_cast<NvmHashEntry *>(node_allocator->AllocateAndInit(sizeof(NvmHashEntry) * capacity, 0));
         node_num_.store(0);
         refs_.store(0);
     }
@@ -126,7 +128,7 @@ private:
     void GetVersionAndRefByWrite(bool &is_rehash, HashVersion **version);
     void GetVersionAndRefByRead(bool &is_rehash, HashVersion **version, HashVersion **rehash_version);
     inline uint32_t hash_id(const inode_id_t key, const uint64_t capacity);
-    int HashEntryInsertKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
+    int HashEntryInsertKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, const inode_id_t &value);
     void HashEntryDealWithOp(HashVersion *version, uint32_t index, LinkListOp &op);
     int HashEntryGetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value);
     int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname);

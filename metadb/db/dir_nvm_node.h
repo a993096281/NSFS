@@ -196,23 +196,23 @@ struct BptreeIndexNode {
     }
 
     void SetEntryPersist(uint32_t offset, const void *ptr, uint32_t len){
-        void *buf = static_cast<char *>(entry) + offset;
+        void *buf = reinterpret_cast<char *>(entry) + offset;
         node_allocator->nvm_memmove_persist(buf, ptr, len);
     }
     void SetEntryNodrain(uint32_t offset, const void *ptr, uint32_t len){
-        void *buf = static_cast<char *>(entry) + offset;
+        void *buf = reinterpret_cast<char *>(entry) + offset;
         node_allocator->nvm_memmove_nodrain(buf, ptr, len);
     }
 
     void SetEntryPersistByIndex(uint32_t index, uint64_t key, pointer_t ptr){
-        void *buf = static_cast<char *>(entry) + index * sizeof(IndexNodeEntry);
+        void *buf = reinterpret_cast<char *>(entry) + index * sizeof(IndexNodeEntry);
         char insert_buf[sizeof(IndexNodeEntry)];
         memcpy(insert_buf, &key, 8);
         memcpy(insert_buf + 8, &ptr, sizeof(pointer_t));
         node_allocator->nvm_memcpy_persist(buf, insert_buf, sizeof(IndexNodeEntry));
     }
     void SetEntryNodrainByIndex(uint32_t index, uint64_t key, pointer_t ptr){
-        void *buf = static_cast<char *>(entry) + index * sizeof(IndexNodeEntry);
+        void *buf = reinterpret_cast<char *>(entry) + index * sizeof(IndexNodeEntry);
         char insert_buf[sizeof(IndexNodeEntry)];
         memcpy(insert_buf, &key, 8);
         memcpy(insert_buf + 8, &ptr, sizeof(pointer_t));
@@ -242,12 +242,12 @@ struct BptreeLeafNode {
     }
 
     void DecodeBufGetKeyValuelen(uint32_t offset, uint64_t &key, uint32_t &value_len){
-        key = *static_cast<uint64_t *>(buf + offset);
-        value_len = *static_cast<uint32_t *>(buf + offset + 8);
+        key = *reinterpret_cast<uint64_t *>(buf + offset);
+        value_len = *reinterpret_cast<uint32_t *>(buf + offset + 8);
     }
 
     uint64_t GetMinKey(){
-        uint64_t min_key = *static_cast<uint64_t *>(buf);
+        uint64_t min_key = *reinterpret_cast<uint64_t *>(buf);
         return min_key;
     }
 
@@ -299,6 +299,8 @@ struct BptreeLeafNode {
     }
 };
 
+class BptreeOp;
+
 ////// LinkList 操作
 struct LinkListOp {
     pointer_t root;   //输入的root节点
@@ -342,7 +344,8 @@ int RehashLinkListInsert(LinkListOp &op, const inode_id_t key, string &kvs);   /
 
 ////// bptree 操作
 
-struct BptreeOp {
+class BptreeOp {
+public:
     pointer_t root;
     pointer_t res;
 

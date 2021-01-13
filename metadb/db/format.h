@@ -7,6 +7,8 @@
 #ifndef _METADB_FORMAT_H_
 #define _METADB_FORMAT_H_
 
+#include <stdint.h>
+
 #define NODE_BASE_SIZE 256    //node节点基础大小，以该值为块，必须为2的幂次，2^N
 #define FILE_BASE_SIZE 64ULL * 1024 * 1024   //file以64MB为一个group组，里面再划分不同的块
 #define START_ALLOCATOR_INDEX 1  //从1开始分配，0为无效地址。

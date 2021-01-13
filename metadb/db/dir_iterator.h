@@ -174,7 +174,7 @@ uint64_t BptreeIterator::hash_fname() const {
 inode_id_t BptreeIterator::value() const {
     uint64_t hash_fname;
     uint32_t value_len;
-    cur_node_->DecodeBufGetHashfnameAndLen(cur_offset_, hash_fname, value_len);
+    cur_node_->DecodeBufGetKeyValuelen(cur_offset_, hash_fname, value_len);
     uint32_t value_offset = cur_offset_ + 8 + 4 + (value_len - sizeof(inode_id_t));
     return *static_cast<inode_id_t *>(cur_node_->buf + value_offset);
 }

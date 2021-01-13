@@ -100,7 +100,7 @@ int LinkNodeSearch(LinkNodeSearchResult &res, LinkNode *cur, const inode_id_t ke
         if(compare_inode_id(key, temp_key) < 0) {  //未找到
             res.key_index = i;
             res.key_offset = offset;
-            return 1；
+            return 1;
         }
         if(key_num == 0){
             kv_len = sizeof(inode_id_t) + 4 + 8;
@@ -1022,7 +1022,7 @@ int LinkNodeSearchKey(LinkNodeSearchResult &res, LinkNode *cur, const inode_id_t
         if(compare_inode_id(key, temp_key) < 0) {  //未找到
             res.key_index = i;
             res.key_offset = offset;
-            return 1；
+            return 1;
         }
         if(key_num == 0){
             kv_len = sizeof(inode_id_t) + 4 + 8;

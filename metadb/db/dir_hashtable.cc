@@ -94,7 +94,7 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, Lin
         version->node_num_.fetch_sub(free_linknode_num - add_linknode_num);
     }
 
-    if(!op.free_linknode_num.empty()) {  //后续最好原子记录一次操作的所有申请和删除的节点，作为空间管理日志
+    if(!op.free_linknode_list.empty()) {  //后续最好原子记录一次操作的所有申请和删除的节点，作为空间管理日志
         for(auto it : op.free_linknode_list) {
             node_allocator->Free(it, DIR_LINK_NODE_SIZE);
         }
@@ -111,7 +111,7 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, Lin
     }
 
     if(hash_type_ == 1){  //一级hash，暂时不会扩展，只会生成新的二级hash
-        if(NeedHashEntryToSecondHash()){
+        if(NeedHashEntryToSecondHash(entry)){
             AddHashEntryTranToSecondHashJob(version, index);
         }
     }
@@ -123,13 +123,13 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, Lin
     }
 }
 
-int DirHashTable::HashEntryInsertKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value){
+int DirHashTable::HashEntryInsertKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, const inode_id_t &value){
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
 
     if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
-        DirHashTable *second_hash = entry->GetSecondHashAddr();
+        DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
         return second_hash->Put(key, fname, value);
     }
     version->rwlock_[index].WriteLock();
@@ -173,7 +173,7 @@ int DirHashTable::HashEntryGetKV(HashVersion *version, uint32_t index, const ino
     pointer_t root = entry->root;
     int res = -1;
     if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
-        DirHashTable *second_hash = entry->GetSecondHashAddr();
+        DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
         return second_hash->Get(key, fname, value);
     }
      //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点是一个问题，延时删除可行或引用计数，
@@ -226,12 +226,12 @@ int DirHashTable::Get(const inode_id_t key, const Slice &fname, inode_id_t &valu
     return res;   //
 }
 
-int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname){
+int DirHashTable::HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname){
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
     if(IS_SECOND_HASH_POINTER(root)) {  //二级hash
-        DirHashTable *second_hash = entry->GetSecondHashAddr();
+        DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
         return second_hash->Delete(key, fname);
     }
     version->rwlock_[index].WriteLock();
@@ -248,7 +248,7 @@ int HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key
     return res;
 }
 
-int Delete(const inode_id_t key, const Slice &fname){
+int DirHashTable::Delete(const inode_id_t key, const Slice &fname){
     bool is_rehash = false;
     HashVersion *version;
     HashVersion *rehash_version;
@@ -347,7 +347,7 @@ static void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
     pointer_t root = INVALID_POINTER;
     uint32_t nodes_num = 0;
     HashVersion *version = second_hash->version_;
-    for(uint32_t i = 0; i < second_hash_capacity, i++){
+    for(uint32_t i = 0; i < second_hash_capacity; i++){
         if(!buckets[i].empty()){
             MemoryTranToNVMLinkNode(buckets[i], root, nodes_num);
             version->buckets_[i].SetRootPersist(root);
@@ -375,7 +375,7 @@ void DirHashTable::SecondHashDoRehashWork(){
         version_lock_.Unlock();
         return ;
     }
-    rehash_version_ = new InodeHashVersion(version_->capacity_ * 2);
+    rehash_version_ = new HashVersion(version_->capacity_ * 2);
     version_->Ref();
     rehash_version_->Ref();
     is_rehash_ = true;
@@ -449,12 +449,12 @@ void DirHashTable::MoveEntryToRehash(HashVersion *version, uint32_t index, HashV
             }
             kvs.assign(cur_node->buf + offset, kv_len);
             key_index = hash_id(key, rehash_version->capacity_);
-            res = RehashInsertKvs(rehash_version, key_index, kvs);  //这个插入超麻烦
+            res = RehashInsertKvs(rehash_version, key_index, key, kvs);  //这个插入超麻烦
         }
         free_list.push_back(cur);
         cur = cur_node->next;
     }
-    entry->SetRootPersit(INVALID_POINTER);  //旧version的entry变为空
+    entry->SetRootPersist(INVALID_POINTER);  //旧version的entry变为空
     version->rwlock_[index].Unlock();
 
     for(auto it : free_list) {

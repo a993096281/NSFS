@@ -16,14 +16,6 @@
 
 namespace metadb {
 
-
-#define ERROR_PRINT(format, a...) \
-do{ \
-    printf("ERROR:[%s][%s][%d]: " #format"\n", __FILE__, __FUNCTION__, __LINE__, ##a); \
-    DBG_LOG(format, a...) \
-}while(0)
-
-
 #ifdef NDEBUG
 
 #define DBG_LOG(format, a...)
@@ -81,6 +73,12 @@ do{ \
 }while(0)
 
 #endif
+
+#define ERROR_PRINT(format, a...) \
+do{ \
+    printf("ERROR:[%s][%s][%d]: " #format"\n", __FILE__, __FUNCTION__, __LINE__, ##a); \
+    DBG_LOG(format, a...) \
+}while(0)
 
 }
 
