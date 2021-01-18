@@ -33,7 +33,7 @@ struct LinkNodeSearchResult {
     LinkNodeSearchResult() : key_find(false), key_index(0), key_offset(0), key_num(0), key_len(0),
         value_is_bptree(false), fname_find(false), fname_index(0), fname_offset(0), value_len(0) {}
     ~LinkNodeSearchResult() {}
-}
+};
 
 
 
@@ -146,13 +146,13 @@ void MemoryEncodeKeyBptreePointer(char * buf, inode_id_t key, pointer_t bptree){
 }
 
 void MemoryDecodeGetKeyNumLen(const char *buf, inode_id_t &key, uint32_t &key_num, uint32_t &key_len){
-    key = *static_cast<const inode_id_t *>(buf);
-    key_num = *static_cast<const uint32_t *>(buf + sizeof(inode_id_t));
-    key_len = *static_cast<const uint32_t *>(buf + sizeof(inode_id_t) + 4);
+    key = *reinterpret_cast<const inode_id_t *>(buf);
+    key_num = *reinterpret_cast<const uint32_t *>(buf + sizeof(inode_id_t));
+    key_len = *reinterpret_cast<const uint32_t *>(buf + sizeof(inode_id_t) + 4);
 }
 
 inode_id_t MemoryDecodeGetKey(const char *buf){
-    return (*static_cast<const inode_id_t *>(buf));
+    return (*reinterpret_cast<const inode_id_t *>(buf));
 }
 
 void LinkNodeUpdateNextPrev(LinkNode *new_node){
@@ -237,7 +237,7 @@ int LinkNodeTranBptreeDo(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cu
     //len不可能为0
     if(len < LINK_NODE_TRIG_MERGE_SIZE ){ //可能需要合并
         if(!IS_INVALID_POINTER(cur->next)){  
-            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
+            LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->next));
             if(next_node->GetFreeSpace() >= len){ //和后节点合并，空间足够组成一个节点
                 LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
                 new_node->CopyBy(cur);
@@ -263,7 +263,7 @@ int LinkNodeTranBptreeDo(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cu
         }
 
         if(!IS_INVALID_POINTER(cur->prev)){
-            LinkNode *prev_node = static_cast<LinkNode *>(cur->prev);
+            LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
             if(prev_node->GetFreeSpace() >= len){ //和前节点合并，空间足够组成一个节点
                 LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
                 new_node->CopyBy(prev_node);
@@ -618,7 +618,7 @@ int LinkNodeDeleteBptree(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cu
     uint32_t remain_len = cur->len - del_len;
     if(remain_len != 0 && remain_len < LINK_NODE_TRIG_MERGE_SIZE ){ //可能需要合并
         if(!IS_INVALID_POINTER(cur->next)){  
-            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
+            LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->next));
             if(next_node->GetFreeSpace() >= remain_len){ //和后节点合并，空间足够组成一个节点
                 LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
                 new_node->CopyBy(cur);
@@ -655,7 +655,7 @@ int LinkNodeDeleteBptree(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cu
         }
 
         if(!IS_INVALID_POINTER(cur->prev)){
-            LinkNode *prev_node = static_cast<LinkNode *>(cur->prev);
+            LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
             if(prev_node->GetFreeSpace() >= remain_len){ //和前节点合并，空间足够组成一个节点
                 LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
                 new_node->CopyBy(cur);
@@ -697,12 +697,12 @@ int LinkNodeDeleteBptree(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cu
     //剩下内容组成单个节点
     if(remain_len == 0){  //直接删除节点；
         if(!IS_INVALID_POINTER(cur->next)){  //后节点存在
-            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
+            LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->next));
             next_node->SetPrevPersist(cur->prev);
         }
 
         if(!IS_INVALID_POINTER(cur->prev)){  //前结点存在
-            LinkNode *prev_node = static_cast<LinkNode *>(cur->prev);
+            LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
             prev_node->SetNextPersist(cur->next);
         } else {
             op.res = cur->next;  //头结点替换
@@ -772,7 +772,7 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
     uint32_t remain_len = cur->len - del_len;
     if(remain_len != 0 && remain_len < LINK_NODE_TRIG_MERGE_SIZE ){ //可能需要合并
         if(!IS_INVALID_POINTER(cur->next)){  
-            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
+            LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->next));
             if(next_node->GetFreeSpace() >= remain_len){ //和后节点合并，空间足够组成一个节点
                 LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
                 new_node->CopyBy(cur);
@@ -816,7 +816,7 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
         }
 
         if(!IS_INVALID_POINTER(cur->prev)){
-            LinkNode *prev_node = static_cast<LinkNode *>(cur->prev);
+            LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
             if(prev_node->GetFreeSpace() >= remain_len){ //和前节点合并，空间足够组成一个节点
                 LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
                 new_node->CopyBy(cur);
@@ -863,12 +863,12 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
     //剩下内容组成单个节点
     if(remain_len == 0){  //直接删除节点；
         if(!IS_INVALID_POINTER(cur->next)){  //后节点存在
-            LinkNode *next_node = static_cast<LinkNode *>(cur->next);
+            LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->next));
             next_node->SetPrevPersist(cur->prev);
         }
 
         if(!IS_INVALID_POINTER(cur->prev)){  //前结点存在
-            LinkNode *prev_node = static_cast<LinkNode *>(cur->prev);
+            LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
             prev_node->SetNextPersist(cur->next);
         } else {
             op.res = cur->next;  //头结点替换

@@ -12,16 +12,16 @@
 namespace metadb {
 
 HashVersion::~HashVersion() {
-        if(buckets_ != nullptr){   //正常退出
-            for(uint32_t i = 0; i < capacity_; i++){
-                if(IS_SECOND_HASH_POINTER(buckets_[i].root)) {
-                    DirHashTable *second_hash = static_cast<DirHashTable *>(buckets_[i].GetSecondHashAddr());
-                    delete second_hash;
-                }
+    if(buckets_ != nullptr){   //正常退出
+        for(uint32_t i = 0; i < capacity_; i++){
+            if(IS_SECOND_HASH_POINTER(buckets_[i].root)) {
+                DirHashTable *second_hash = static_cast<DirHashTable *>(buckets_[i].GetSecondHashAddr());
+                delete second_hash;
             }
         }
-        delete[] rwlock_;
     }
+    delete[] rwlock_;
+}
 
 DirHashTable::DirHashTable(const Option &option, uint32_t hash_type, uint64_t capacity) : option_(option) {
     hash_type_ = hash_type;
@@ -313,7 +313,7 @@ void DirHashTable::AddHashEntryTranToSecondHashJob(HashVersion *version, uint32_
     thread_pool->Schedule(&DirHashTable::HashEntryTranToSecondHashWork, job);   //添加后台任务
 }
 
-static void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
+void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
     TranToSecondHashJob *job = static_cast<TranToSecondHashJob *>(arg);
     NvmHashEntry *entry = &(job->version->buckets_[job->index]);
     job->version->rwlock_[job->index].WriteLock();
@@ -377,7 +377,7 @@ static void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
     delete job;
 }
 
-static void DirHashTable::SecondHashDoRehashJob(void *arg){
+void DirHashTable::SecondHashDoRehashJob(void *arg){
     reinterpret_cast<DirHashTable *>(arg)->SecondHashDoRehashWork();
 }
 
