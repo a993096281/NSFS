@@ -11,6 +11,18 @@
 
 namespace metadb {
 
+HashVersion::~HashVersion() {
+        if(buckets_ != nullptr){   //正常退出
+            for(uint32_t i = 0; i < capacity_; i++){
+                if(IS_SECOND_HASH_POINTER(buckets_[i].root)) {
+                    DirHashTable *second_hash = static_cast<DirHashTable *>(buckets_[i].GetSecondHashAddr());
+                    delete second_hash;
+                }
+            }
+        }
+        delete[] rwlock_;
+    }
+
 DirHashTable::DirHashTable(const Option &option, uint32_t hash_type, uint64_t capacity) : option_(option) {
     hash_type_ = hash_type;
     is_rehash_ = false;
@@ -294,7 +306,7 @@ struct TranToSecondHashJob{
 
     TranToSecondHashJob(DirHashTable *a, HashVersion *b, uint32_t c) : hashtable(a), version(b), index(c) {}
     ~TranToSecondHashJob() {}
-}
+};
 
 void DirHashTable::AddHashEntryTranToSecondHashJob(HashVersion *version, uint32_t index){
     TranToSecondHashJob *job = new TranToSecondHashJob(this, version, index);
@@ -371,7 +383,7 @@ static void DirHashTable::SecondHashDoRehashJob(void *arg){
 
 void DirHashTable::SecondHashDoRehashWork(){
     version_lock_.Lock();
-    if(!NeedSecondHashDoRehash(version_)){
+    if(!NeedSecondHashDoRehash()){
         version_lock_.Unlock();
         return ;
     }

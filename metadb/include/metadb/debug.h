@@ -36,7 +36,7 @@ static inline unsigned int get_tid(){
 
 class DebugLogger{
 public:
-    DebugLogger(char *log_file_path) {
+    DebugLogger(const char *log_file_path) {
         fp = fopen(log_file_path,"w+");
         if(fp == nullptr){
             printf("can't create log file!");
@@ -64,7 +64,7 @@ DebugLogger* DebugLogger::log_ = nullptr;
 
 #define DBG_LOG(format, a...) \
 do{ \
-    fprint(metadb::DebugLogger::GetInstance()->GetFp, "[%-18s][%4d][%5d]: " #format"\n", __FUNCTION__, __LINE__, get_tid(), ##a); \
+    fprintf(metadb::DebugLogger::GetInstance()->GetFp, "[%-18s][%4d][%5d]: " #format"\n", __FUNCTION__, __LINE__, get_tid(), ##a); \
 }while(0)
 
 #define DBG_PRINT(format, a...) \
@@ -77,7 +77,7 @@ do{ \
 #define ERROR_PRINT(format, a...) \
 do{ \
     printf("ERROR:[%s][%s][%d]: " #format"\n", __FILE__, __FUNCTION__, __LINE__, ##a); \
-    DBG_LOG(format, ##a) \
+    DBG_LOG(format, ##a); \
 }while(0)
 
 }

@@ -12,6 +12,7 @@
 #include "metadb/slice.h"
 #include "metadb/inode.h"
 #include "metadb/iterator.h"
+#include "nvm_node_allocator.h"
 
 using namespace std;
 

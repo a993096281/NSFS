@@ -15,7 +15,7 @@
 #include "../util/bitmap.h"
 #include "format.h"
 
-#define NODE_GET_OFFSET(dst) (static_cast<char *>(dst) - metadb::node_pool_pointer)     //void *-> offset
+#define NODE_GET_OFFSET(dst) (reinterpret_cast<char *>(dst) - metadb::node_pool_pointer)     //void *-> offset
 #define NODE_GET_POINTER(offset) (static_cast<void *>(metadb::node_pool_pointer + offset))  //offset -> void *
 
 namespace metadb {

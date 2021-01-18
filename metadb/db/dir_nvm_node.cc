@@ -8,7 +8,6 @@
 #include <queue>
 
 #include "dir_nvm_node.h"
-#include "nvm_node_allocator.h"
 
 using namespace std;
 namespace metadb {
