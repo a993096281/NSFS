@@ -14,6 +14,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#define LOG_FILE_PATH "log.log"
+
 namespace metadb {
 
 #ifdef NDEBUG
@@ -22,8 +24,6 @@ namespace metadb {
 #define DBG_PRINT(format, a...)
 
 #else
-
-#define LOG_FILE_PATH "log.log"
 
 static inline unsigned int get_tid(){
 #ifdef __APPLE__
@@ -39,7 +39,7 @@ public:
     DebugLogger(char *log_file_path) {
         fp = fopen(log_file_path,"w+");
         if(fp == nullptr){
-            ERROR_PRINT("can't create log file!");
+            printf("can't create log file!");
             exit(-1);
         }
     }
@@ -77,7 +77,7 @@ do{ \
 #define ERROR_PRINT(format, a...) \
 do{ \
     printf("ERROR:[%s][%s][%d]: " #format"\n", __FILE__, __FUNCTION__, __LINE__, ##a); \
-    DBG_LOG(format, a...) \
+    DBG_LOG(format, ##a) \
 }while(0)
 
 }

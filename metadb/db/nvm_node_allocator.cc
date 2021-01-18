@@ -130,7 +130,7 @@ void *NVMNodeAllocator::AllocateAndInit(uint64_t size, int c){
 
 void NVMNodeAllocator::Free(void *addr, uint64_t len){
     uint64_t allocated = (len + NODE_BASE_SIZE - 1) & (~(NODE_BASE_SIZE - 1));  //保证按照NODE_BASE_SIZE分配
-    uint64_t offset = addr - pmemaddr_;
+    uint64_t offset = static_cast<char *>(addr) - pmemaddr_;
     assert(offset < capacity_);
     SetFreeIndex(offset, allocated);
 }

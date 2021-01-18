@@ -87,7 +87,7 @@ string LinkNodeIterator::fname() const {
 }
 
 uint64_t LinkNodeIterator::hash_fname() const {
-    return *static_cast<const uint64_t *>(cur_node_->buf + cur_offset_);
+    return *reinterpret_cast<const uint64_t *>(cur_node_->buf + cur_offset_);
 }
 
 inode_id_t LinkNodeIterator::value() const {
@@ -168,7 +168,7 @@ string BptreeIterator::fname() const {
 }
 
 uint64_t BptreeIterator::hash_fname() const {
-    return *static_cast<const uint64_t *>(cur_node_->buf + cur_offset_);
+    return *reinterpret_cast<const uint64_t *>(cur_node_->buf + cur_offset_);
 }
 
 inode_id_t BptreeIterator::value() const {
@@ -176,7 +176,7 @@ inode_id_t BptreeIterator::value() const {
     uint32_t value_len;
     cur_node_->DecodeBufGetKeyValuelen(cur_offset_, hash_fname, value_len);
     uint32_t value_offset = cur_offset_ + 8 + 4 + (value_len - sizeof(inode_id_t));
-    return *static_cast<inode_id_t *>(cur_node_->buf + value_offset);
+    return *reinterpret_cast<inode_id_t *>(cur_node_->buf + value_offset);
 }
 
 class EmptyIterator : public Iterator {

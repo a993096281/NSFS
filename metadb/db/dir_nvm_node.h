@@ -299,7 +299,24 @@ struct BptreeLeafNode {
     }
 };
 
-class BptreeOp;
+class BptreeOp {
+public:
+    pointer_t root;
+    pointer_t res;
+
+    vector<pointer_t> add_indexnode_list;
+    vector<pointer_t> free_indexnode_list;
+    vector<pointer_t> add_leafnode_list;
+    vector<pointer_t> free_leafnode_list;
+
+    BptreeOp() : root(INVALID_POINTER) , res(INVALID_POINTER) {
+        add_indexnode_list.reserve(6);
+        free_indexnode_list.reserve(6);
+        add_leafnode_list.reserve(3);
+        free_leafnode_list.reserve(3);
+    }   
+    ~BptreeOp() {}
+};
 
 ////// LinkList 操作
 struct LinkListOp {
@@ -343,26 +360,6 @@ int RehashLinkListInsert(LinkListOp &op, const inode_id_t key, string &kvs);   /
 //////
 
 ////// bptree 操作
-
-class BptreeOp {
-public:
-    pointer_t root;
-    pointer_t res;
-
-    vector<pointer_t> add_indexnode_list;
-    vector<pointer_t> free_indexnode_list;
-    vector<pointer_t> add_leafnode_list;
-    vector<pointer_t> free_leafnode_list;
-
-    BptreeOp() : root(INVALID_POINTER) , res(INVALID_POINTER) {
-        add_indexnode_list.reserve(6);
-        free_indexnode_list.reserve(6);
-        add_leafnode_list.reserve(3);
-        free_leafnode_list.reserve(3);
-    }   
-    ~BptreeOp() {}
-};
-
 BptreeIndexNode *AllocBptreeIndexNode();
 BptreeLeafNode *AllocBptreeLeafNode();
 int BptreeInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, const inode_id_t value);
