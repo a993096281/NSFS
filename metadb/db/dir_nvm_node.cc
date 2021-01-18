@@ -145,6 +145,18 @@ void MemoryEncodeKeyBptreePointer(char * buf, inode_id_t key, pointer_t bptree){
     memcpy(buf + sizeof(inode_id_t) + 4, &bptree, sizeof(pointer_t));
 }
 
+void MemoryEncodeHashkeyLenFnameValue(void *buf, const uint64_t hash_key, const Slice &fname, const inode_id_t value){
+    uint32_t offset = 0;
+    uint32_t value_len = fname.size() + sizeof(inode_id_t);
+    memcpy(buf + offset, &hash_key, 8);
+    offset += 8;
+    memcpy(buf + offset, &value_len, 4);
+    offset += 4;
+    memcpy(buf + offset, fname.data(), fname.size());
+    offset += fname.size();
+    memcpy(buf + offset, &value, sizeof(inode_id_t));
+}
+
 void MemoryDecodeGetKeyNumLen(const char *buf, inode_id_t &key, uint32_t &key_num, uint32_t &key_len){
     key = *reinterpret_cast<const inode_id_t *>(buf);
     key_num = *reinterpret_cast<const uint32_t *>(buf + sizeof(inode_id_t));
@@ -590,7 +602,7 @@ int LinkListGet(LinkNode *root, const inode_id_t key, const Slice &fname, inode_
             return BptreeGet(bptree, MurmurHash64(fname.data(), fname.size()), fname, value);
         } else if (res.fname_find) {
             uint32_t get_offset = res.fname_offset + 8 + 4 + fname.size();
-            value = *static_cast<inode_id_t *>(search_node->buf + get_offset);
+            value = *reinterpret_cast<inode_id_t *>(search_node->buf + get_offset);
             return 0;
         } else {
             return 2;
@@ -1077,9 +1089,9 @@ int LinkKVSMerge(const string &now_kvs, const string &rehash_kvs, string &new_kv
         key_num++;
     }
     uint32_t key_len = new_kvs.size();
-    new_kvs.insert(0, &key_len, 4);
-    new_kvs.insert(0, &key_num, 4);
-    new_kvs.insert(0, &key, sizeof(inode_id_t));
+    new_kvs.insert(0, reinterpret_cast<const char *>(&key_len), 4);
+    new_kvs.insert(0, reinterpret_cast<const char *>(&key_num), 4);
+    new_kvs.insert(0, reinterpret_cast<const char *>(&key), sizeof(inode_id_t));
     return 0;
 }
 
@@ -1472,18 +1484,6 @@ uint64_t BptreeNodeGetMinkey(pointer_t ptr){
         BptreeLeafNode *leaf_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(ptr));
         return leaf_node->GetMinKey();
     }
-}
-
-void MemoryEncodeHashkeyLenFnameValue(void *buf, const uint64_t hash_key, const Slice &fname, const inode_id_t value){
-    uint32_t offset = 0;
-    uint32_t value_len = fname.size() + sizeof(inode_id_t);
-    memcpy(buf + offset, &hash_key, 8);
-    offset += 8;
-    memcpy(buf + offset, &value_len, 4);
-    offset += 4;
-    memcpy(buf + offset, fname.data(), fname.size());
-    offset += fname.size();
-    memcpy(buf + offset, &value, sizeof(inode_id_t));
 }
 
 //二分查找大于等于hash_key的最小值，index一定会返回一个值，尽管hash_key小于所有值的时候，这是index = 0；
