@@ -46,7 +46,7 @@ public:
 
     int GetKV(uint64_t offset, std::string &value){  //offset是以该类为起始地址的偏移
         uint64_t buf_offset = offset - NVM_INODE_FILE_HEADER_SIZE;
-        uint32_t value_len = *static_cast<uint32_t *>(buf + buf_offset + sizeof(inode_id_t));
+        uint32_t value_len = *reinterpret_cast<uint32_t *>(buf + buf_offset + sizeof(inode_id_t));
         value.assign(buf + buf_offset + sizeof(inode_id_t) + 4, value_len);
         return 0;
     }

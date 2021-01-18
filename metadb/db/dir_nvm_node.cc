@@ -169,8 +169,8 @@ inode_id_t MemoryDecodeGetKey(const char *buf){
 }
 
 void MemoryDecodeHashkeyValuelen(const char *buf, uint64_t &hash_key, uint32_t &value_len){
-    hash_key = *static_cast<const uint64_t *>(buf);
-    value_len = *static_cast<const uint32_t *>(buf + 8);
+    hash_key = *reinterpret_cast<const uint64_t *>(buf);
+    value_len = *reinterpret_cast<const uint32_t *>(buf + 8);
 }
 
 void LinkNodeUpdateNextPrev(LinkNode *new_node){
@@ -1170,7 +1170,7 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
                 pointer_t head = INVALID_POINTER;
                 BptreeGetLinkHeadNode(res_bptree, head);
                 BptreeLeafNode *head_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(head));
-                Iterator * it = new BptreeIterator(head_node);
+                Iterator *it = dynamic_cast<Iterator *>(new BptreeIterator(head_node));
                 uint64_t hash_fname;
                 Slice fname;
                 inode_id_t value;
@@ -1544,15 +1544,15 @@ int BptreeSearch(BptreeSearchResult &res, pointer_t root, const uint64_t hash_ke
     while(!IS_INVALID_POINTER(cur)){
         if(IsIndexNode(cur)){  //中间节点查找
             BptreeIndexNode *cur_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(cur));
-            BanirySearchIndex(cur_node, hash_key, &index);
+            BanirySearchIndex(cur_node, hash_key, index);
             res.path[res.index_level].node = cur;
             res.path[res.index_level].index = index;
             res.index_level++;
             cur = cur_node->entry[index].pointer;
         }
         else{    //叶子节点查找
-            BptreeIndexNode *cur_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(cur));
-            res.key_find = LinearSearchLeaf(cur, hash_key, res.leaf_key_offset, res.leaf_value_len);
+            BptreeLeafNode *cur_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(cur));
+            res.key_find = LinearSearchLeaf(cur_node, hash_key, res.leaf_key_offset, res.leaf_value_len);
             res.leaf_node = cur;
             break;
         }
@@ -1572,7 +1572,7 @@ int BptreeLeafNodeSplit(const char *buf, uint32_t all_key_num, uint32_t len, vec
         key_num++;
         if(offset >= split_size){
             assert(offset <= LEAF_NODE_CAPACITY);
-            assett((len - offset) <= LEAF_NODE_CAPACITY);
+            assert((len - offset) <= LEAF_NODE_CAPACITY);
             BptreeLeafNode *left_node = AllocBptreeLeafNode();
             left_node->SetBufNodrain(0, buf, offset);
             left_node->SetNumAndLenNodrain(key_num, offset);
@@ -1604,14 +1604,14 @@ void IndexNodeUpdateEntry(BptreeSearchResult &res, uint32_t father_level, pointe
         father->SetEntryPersistByIndex(child_index, BptreeNodeGetMinkey(child_node), child_node);   //因为范围是最小值，key和pointer_t都是8B，保证原子性，
         
         uint32_t level = father_level - 1;
-        pointer_t child = res.path[father_level - 1].node);
+        pointer_t child = res.path[father_level - 1].node;
         child_update_min_key = child_index == 0;  //父节点的最小值有没有变
         while(level > 0 && child_update_min_key){
             father = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(res.path[level - 1].node));
             child_index = res.path[level - 1].index;
             child_min_key = BptreeNodeGetMinkey(child);
             father->SetEntryPersist(child_index * sizeof(IndexNodeEntry), &child_min_key, 8);
-            child = res.path[level - 1].node);
+            child = res.path[level - 1].node;
             child_update_min_key = child_index == 0;
             level--;
         }
@@ -1872,7 +1872,7 @@ int BptreeInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, cons
     } else {
         return -1;
     }
-
+    return 0;
 }
 
 int BptreeGet(pointer_t root, const uint64_t hash_key, const Slice &fname, inode_id_t &value){
@@ -1883,7 +1883,7 @@ int BptreeGet(pointer_t root, const uint64_t hash_key, const Slice &fname, inode
     while(!IS_INVALID_POINTER(cur)){
         if(IsIndexNode(cur)){  //中间节点查找
             BptreeIndexNode *cur_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(cur));
-            find = BanirySearchIndex(cur_node, hash_key, &index);
+            find = BanirySearchIndex(cur_node, hash_key, index);
             if(!find) return 2; //未找到
             res.path[res.index_level].node = cur;
             res.path[res.index_level].index = index;
@@ -1891,15 +1891,15 @@ int BptreeGet(pointer_t root, const uint64_t hash_key, const Slice &fname, inode
             cur = cur_node->entry[index].pointer;
         }
         else{    //叶子节点查找
-            BptreeIndexNode *cur_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(cur));
-            res.key_find = LinearSearchLeaf(cur, hash_key, res.leaf_key_offset, res.leaf_value_len);
+            BptreeLeafNode *cur_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(cur));
+            res.key_find = LinearSearchLeaf(cur_node, hash_key, res.leaf_key_offset, res.leaf_value_len);
             res.leaf_node = cur;
             break;
         }
     }
     if(res.key_find){
         BptreeLeafNode *leaf = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(res.leaf_node));
-        value = *static_cast<inode_id_t *>(leaf->buf + res.leaf_key_offset + 8 + 4 + fname.size());
+        value = *reinterpret_cast<inode_id_t *>(leaf->buf + res.leaf_key_offset + 8 + 4 + fname.size());
         return 0;
     }
     return 2; //未找到
@@ -1921,7 +1921,7 @@ int BptreeIndexNodeUpdateTwoEntry(BptreeOp &op, BptreeSearchResult &res, uint32_
         op.res = NODE_GET_OFFSET(new_node);
     }
 
-    op.free_indexnode_list.push_back(res.path[level - 1]);
+    op.free_indexnode_list.push_back(res.path[level - 1].node);
     op.add_indexnode_list.push_back(NODE_GET_OFFSET(new_node));
 
     return 0;
@@ -1946,7 +1946,7 @@ int BptreeIndexNodeUpdateAndDelete(BptreeOp &op, BptreeSearchResult &res, uint32
             BptreeIndexNode *father = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(res.path[level - 1].node));
             uint32_t father_index = res.path[level - 1].index;
             if(father_index != father->num - 1){  //优先和后节点合并
-                BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(father->entry[father_index + 1].pointer);
+                BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index + 1].pointer));
                 if(next_node->GetFreeSpace() >= remain_num){
                     BptreeIndexNode *new_node = AllocBptreeIndexNode();
                     new_node->CopyBy(cur);
@@ -1967,7 +1967,7 @@ int BptreeIndexNodeUpdateAndDelete(BptreeOp &op, BptreeSearchResult &res, uint32
                 }
             }
             if(father_index > 0){  //和前节点合并
-                BptreeIndexNode *prev_node = static_cast<BptreeIndexNode *>(father->entry[father_index - 1].pointer);
+                BptreeIndexNode *prev_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index - 1].pointer));
                 if(prev_node->GetFreeSpace() >= remain_num){
                     BptreeIndexNode *new_node = AllocBptreeIndexNode();
                     new_node->CopyBy(prev_node);
@@ -1993,7 +1993,7 @@ int BptreeIndexNodeUpdateAndDelete(BptreeOp &op, BptreeSearchResult &res, uint32
 
             if(remain_num < INDEX_NODE_TRIG_BALANCE_SIZE){  //该节点无法和前后节点合并成单个节点，但是本身节点又太小，所以和左右节点合并成两个节点，平衡节点
                 if(father_index != father->num - 1){  //优先和后面节点合并成两个节点
-                    BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(father->entry[father_index + 1].pointer);
+                    BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index + 1].pointer));
                     uint32_t entry_num = remain_num + next_node->num;
                     IndexNodeEntry *entrys = new IndexNodeEntry[entry_num];
                     memcpy(entrys, cur->entry, remain_num * sizeof(IndexNodeEntry));
@@ -2025,7 +2025,7 @@ int BptreeIndexNodeUpdateAndDelete(BptreeOp &op, BptreeSearchResult &res, uint32
                 }
 
                 if(father_index > 0){  //和前面节点合并成两个节点
-                    BptreeIndexNode *prev_node = static_cast<BptreeIndexNode *>(father->entry[father_index - 1].pointer);
+                    BptreeIndexNode *prev_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index - 1].pointer));
                     uint32_t entry_num = remain_num + prev_node->num;
                     IndexNodeEntry *entrys = new IndexNodeEntry[entry_num];
                     memcpy(entrys, prev_node->entry, prev_node->num * sizeof(IndexNodeEntry));
@@ -2106,7 +2106,7 @@ int BptreeIndexNodeDeleteEntry(BptreeOp &op, BptreeSearchResult &res, uint32_t l
             BptreeIndexNode *father = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(res.path[level - 1].node));
             uint32_t father_index = res.path[level - 1].index;
             if(father_index != father->num - 1){  //优先和后节点合并
-                BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(father->entry[father_index + 1].pointer);
+                BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index + 1].pointer));
                 if(next_node->GetFreeSpace() >= remain_num){
                     BptreeIndexNode *new_node = AllocBptreeIndexNode();
                     new_node->CopyBy(cur);
@@ -2126,7 +2126,7 @@ int BptreeIndexNodeDeleteEntry(BptreeOp &op, BptreeSearchResult &res, uint32_t l
                 }
             }
             if(father_index > 0){  //和前节点合并
-                BptreeIndexNode *prev_node = static_cast<BptreeIndexNode *>(father->entry[father_index - 1].pointer);
+                BptreeIndexNode *prev_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index - 1].pointer));
                 if(prev_node->GetFreeSpace() >= remain_num){
                     BptreeIndexNode *new_node = AllocBptreeIndexNode();
                     new_node->CopyBy(prev_node);
@@ -2151,7 +2151,7 @@ int BptreeIndexNodeDeleteEntry(BptreeOp &op, BptreeSearchResult &res, uint32_t l
 
             if(remain_num < INDEX_NODE_TRIG_BALANCE_SIZE){  //该节点无法和前后节点合并成单个节点，但是本身节点又太小，所以和左右节点合并成两个节点，平衡节点
                 if(father_index != father->num - 1){  //优先和后面节点合并成两个节点
-                    BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(father->entry[father_index + 1].pointer);
+                    BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index + 1].pointer));
                     uint32_t entry_num = remain_num + next_node->num;
                     IndexNodeEntry *entrys = new IndexNodeEntry[entry_num];
                     memcpy(entrys, cur->entry, remain_num * sizeof(IndexNodeEntry));
@@ -2181,7 +2181,7 @@ int BptreeIndexNodeDeleteEntry(BptreeOp &op, BptreeSearchResult &res, uint32_t l
                 }
 
                 if(father_index > 0){  //和前面节点合并成两个节点
-                    BptreeIndexNode *prev_node = static_cast<BptreeIndexNode *>(father->entry[father_index - 1].pointer);
+                    BptreeIndexNode *prev_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index - 1].pointer));
                     uint32_t entry_num = remain_num + prev_node->num;
                     IndexNodeEntry *entrys = new IndexNodeEntry[entry_num];
                     memcpy(entrys, prev_node->entry, prev_node->num * sizeof(IndexNodeEntry));
@@ -2254,7 +2254,7 @@ int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname){
             BptreeIndexNode *father = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(res.path[res.index_level - 1].node));
             uint32_t father_index = res.path[res.index_level - 1].index;
             if(father_index != father->num - 1){  //优先和后节点合并
-                BptreeLeafNode *next_node = static_cast<BptreeLeafNode *>(father->entry[father_index + 1].pointer);
+                BptreeLeafNode *next_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(father->entry[father_index + 1].pointer));
                 if(next_node->GetFreeSpace() >= remain_len){  //空间足够，进行合并
                     BptreeLeafNode *new_node = AllocBptreeLeafNode();
                     new_node->CopyBy(leaf_node);
@@ -2276,7 +2276,7 @@ int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname){
                 }
             }
             if(father_index > 0){  //和前节点合并
-                BptreeLeafNode *prev_node = static_cast<BptreeLeafNode *>(father->entry[father_index - 1].pointer);
+                BptreeLeafNode *prev_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(father->entry[father_index - 1].pointer));
                 if(prev_node->GetFreeSpace() >= remain_len){  //空间足够，进行合并
                     BptreeLeafNode *new_node = AllocBptreeLeafNode();
                     new_node->CopyBy(prev_node);
@@ -2302,10 +2302,10 @@ int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname){
             }
             if(remain_len < LEAF_NODE_TRIG_BALANCE_SIZE) {  //该节点无法和前后节点合并成单个节点，但是本身节点又太小，所以和左右节点合并成两个节点，平衡节点
                 if(father_index != father->num - 1){  //优先和后面节点合并成两个节点
-                    BptreeLeafNode *next_node = static_cast<BptreeLeafNode *>(father->entry[father_index + 1].pointer);
+                    BptreeLeafNode *next_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(father->entry[father_index + 1].pointer));
                     char *buf = new char[remain_len + next_node->len];
                     memcpy(buf, leaf_node->buf, leaf_node->len);
-                    uint32_t need_move = new_node->len - res.leaf_key_offset - del_len;
+                    uint32_t need_move = leaf_node->len - res.leaf_key_offset - del_len;
                     if(need_move){
                         memmove(buf + res.leaf_key_offset, buf + res.leaf_key_offset + del_len, need_move);
                     }
@@ -2343,14 +2343,14 @@ int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname){
                 }
 
                 if(father_index > 0){  //和前面节点合并成两个节点
-                    BptreeLeafNode *prev_node = static_cast<BptreeLeafNode *>(father->entry[father_index - 1].pointer);
+                    BptreeLeafNode *prev_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(father->entry[father_index - 1].pointer));
                     char *buf = new char[remain_len + prev_node->len];
                     memcpy(buf, prev_node->buf, prev_node->len);
                     uint32_t first_move = res.leaf_key_offset;
                     if(first_move){
                         memcpy(buf + prev_node->len, leaf_node->buf, first_move);
                     }
-                    uint32_t second_move = new_node->len - res.leaf_key_offset - del_len;
+                    uint32_t second_move = leaf_node->len - res.leaf_key_offset - del_len;
                     if(second_move) {
                         memcpy(buf + prev_node->len + first_move, leaf_node->buf + res.leaf_key_offset + del_len, second_move);
                     }
@@ -2479,10 +2479,10 @@ Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target){
         if(IS_INVALID_POINTER(head)) return nullptr;
         BptreeLeafNode *head_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(head));
 
-        return new BptreeIterator(head_node);
+        return dynamic_cast<Iterator *>(new BptreeIterator(head_node));
     }
     //linklist
-    return new LinkNodeIterator(search, res.key_offset, res.key_num, res.key_len);
+    return dynamic_cast<Iterator *>(new LinkNodeIterator(search, res.key_offset, res.key_num, res.key_len));
 }
 
 //////

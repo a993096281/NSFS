@@ -26,6 +26,7 @@ namespace metadb {
 class InodeZone {   //一级hash的分区，包含一个hashtable存储key-offset，包含多个文件存储value
 public: 
     InodeZone(const Option &option);
+    void InitInodeZone(const Option &option);
     virtual ~InodeZone();
 
     virtual int InodePut(const inode_id_t key, const Slice &value);

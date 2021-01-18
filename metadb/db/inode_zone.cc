@@ -14,6 +14,12 @@ InodeZone::InodeZone(const Option &option) : option_(option) {
     hashtable_ = new InodeHashTable(option, this);
 }
 
+void InodeZone::InitInodeZone(const Option &option){
+    write_file_ = nullptr;
+    option_ = option;
+    hashtable_ = new InodeHashTable(option, this);
+}
+
 InodeZone::~InodeZone(){
     delete hashtable_;
     for(auto it : files_locks_){

@@ -17,7 +17,7 @@
 #include "../util/bitmap.h"
 #include "format.h"
 
-#define FILE_GET_OFFSET(dst) (static_cast<char *>(det) - metadb::file_pool_pointer)     //void *-> offset
+#define FILE_GET_OFFSET(dst) (reinterpret_cast<char *>(dst) - metadb::file_pool_pointer)     //void *-> offset
 #define FILE_GET_POINTER(offset) (static_cast<void *>(metadb::file_pool_pointer + offset))  //offset -> void *
 
 #define MAX_GROUP_BLOCK_TYPE  11

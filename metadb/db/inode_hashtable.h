@@ -82,11 +82,11 @@ struct NvmInodeHashEntryNode {       //无序存储key
         node_allocator->nvm_memcpy_nodrain(&next, &ptr, sizeof(pointer_t));
     }
     void SetEntryPersistByOffset(uint32_t offset, const void *ptr, uint32_t len){
-        void *buf = static_cast<char *>(entry) + offset;
+        void *buf = reinterpret_cast<char *>(entry) + offset;
         node_allocator->nvm_memmove_persist(buf, ptr, len);
     }
     void SetEntryNodrainByOffset(uint32_t offset, const void *ptr, uint32_t len){
-        void *buf = static_cast<char *>(entry) + offset;
+        void *buf = reinterpret_cast<char *>(entry) + offset;
         node_allocator->nvm_memmove_nodrain(buf, ptr, len);
     }
     void SetEntryPersistByIndex(uint32_t index, uint64_t key, pointer_t ptr){
@@ -98,7 +98,7 @@ struct NvmInodeHashEntryNode {       //无序存储key
         node_allocator->nvm_memcpy_nodrain(&(entry[index]), &temp, sizeof(InodeKeyPointer));
     }
     void SetEntryPointerPersist(uint32_t index, pointer_t ptr){
-        void *buf = static_cast<char *>(&(entry[index])) + sizeof(8);
+        void *buf = reinterpret_cast<char *>(&(entry[index])) + sizeof(8);
         node_allocator->nvm_memmove_persist(buf, &ptr, sizeof(pointer_t));
     }
 };
@@ -124,7 +124,7 @@ public:
     InodeHashVersion(uint64_t capacity) {
         capacity_ = capacity;
         rwlock_ = new RWLock[capacity];
-        buckets_ = node_allocator->AllocateAndInit(sizeof(NvmInodeHashEntry) * capacity, 0);
+        buckets_ = static_cast<NvmInodeHashEntry *>(node_allocator->AllocateAndInit(sizeof(NvmInodeHashEntry) * capacity, 0));
         node_num_.store(capacity);
         refs_.store(0);
     }
@@ -137,16 +137,28 @@ public:
         node_allocator->Free(buckets_, sizeof(NvmInodeHashEntry) * capacity_);
     }
 
-    Ref() {
+    void Ref() {
         refs_.fetch_add(1);
     }
 
-    Unref() {
+    void Unref() {
         refs_.fetch_sub(1);
         
         if(refs_.load() == 0){
             delete this;
         }
+    }
+};
+
+struct InodeHashEntryLinkOp{
+    pointer_t root;
+    pointer_t res;  //返回的根节点
+    vector<pointer_t> add_list;  //增加的节点
+    vector<pointer_t> del_list;  //删除的节点
+
+    InodeHashEntryLinkOp() : root(INVALID_POINTER) , res(INVALID_POINTER) {
+        add_list.reserve(2);
+        del_list.reserve(2);
     }
 };
 
@@ -177,7 +189,7 @@ private:
     int HashEntryInsertKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value, pointer_t &old_value);
     int HashEntryOnlyInsertKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value);  //已存在则不插入
     int HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
-    int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value);
+    int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, pointer_t &value);
     int HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value);
     inline bool NeedRehash(InodeHashVersion *version);
 
@@ -187,23 +199,11 @@ private:
 
 };
 
-struct InodeHashEntryLinkOp{
-    pointer_t root;
-    pointer_t res;  //返回的根节点
-    vector<pointer_t> add_list;  //增加的节点
-    vector<pointer_t> del_list;  //删除的节点
-
-    InodeHashEntryLinkOp() : root(INVALID_POINTER) , res(INVALID_POINTER) {
-        add_list.reserve(2);
-        del_list.reserve(2);
-    }
-};
-
 NvmInodeHashEntryNode *AllocHashEntryNode();
 int InodeHashEntryLinkInsert(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t value, pointer_t &old_value);  //已存在则修改
 int InodeHashEntryLinkOnlyInsert(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t value);   //存在既不插入
 int InodeHashEntryLinkUpdate(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
-int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, const pointer_t &value);
+int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, pointer_t &value);
 int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t &value);
 
 } // namespace name

@@ -101,7 +101,7 @@ int InodeHashEntryLinkInsert(InodeHashEntryLinkOp &op, const inode_id_t key, con
         return 2;
     }
     pointer_t insert;
-    pointer_t index;
+    uint16_t index;
     FindFreeSpaceOrCreatEntry(op, insert, index);
     NvmInodeHashEntryNode *insert_node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(insert));
     insert_node->SetEntryPointerPersist(index, value);
@@ -117,7 +117,7 @@ int InodeHashEntryLinkOnlyInsert(InodeHashEntryLinkOp &op, const inode_id_t key,
         return 2;
     }
     pointer_t insert;
-    pointer_t index;
+    uint16_t index;
     FindFreeSpaceOrCreatEntry(op, insert, index);
     NvmInodeHashEntryNode *insert_node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(insert));
     insert_node->SetEntryPointerPersist(index, value);
@@ -138,7 +138,7 @@ int InodeHashEntryLinkUpdate(InodeHashEntryLinkOp &op, const inode_id_t key, con
     return 2; //不存在，无法修改
 }
 
-int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, const pointer_t &value){
+int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, pointer_t &value){
     InodeHashEntrySearchResult res;
     HashEntryLinkSearchKey(res, root, key);
     if(res.key_find){  //已存在
@@ -303,7 +303,7 @@ int HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_
     return res;
 }
 
-int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value){
+int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, pointer_t &value){
     //version->rwlock_[index].ReadLock();  //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点是一个问题，延时删除可行或引用计数，
                                                 //暂时简单处理，由于空间分配是往后分配，提前删除没有影响；
     NvmInodeHashEntry *entry = &(version->buckets_[index]);
