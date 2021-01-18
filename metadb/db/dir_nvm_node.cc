@@ -8,6 +8,7 @@
 #include <queue>
 
 #include "dir_nvm_node.h"
+#include "dir_iterator.h"
 
 using namespace std;
 namespace metadb {
@@ -145,7 +146,7 @@ void MemoryEncodeKeyBptreePointer(char * buf, inode_id_t key, pointer_t bptree){
     memcpy(buf + sizeof(inode_id_t) + 4, &bptree, sizeof(pointer_t));
 }
 
-void MemoryEncodeHashkeyLenFnameValue(void *buf, const uint64_t hash_key, const Slice &fname, const inode_id_t value){
+void MemoryEncodeHashkeyLenFnameValue(char *buf, const uint64_t hash_key, const Slice &fname, const inode_id_t value){
     uint32_t offset = 0;
     uint32_t value_len = fname.size() + sizeof(inode_id_t);
     memcpy(buf + offset, &hash_key, 8);
@@ -165,6 +166,11 @@ void MemoryDecodeGetKeyNumLen(const char *buf, inode_id_t &key, uint32_t &key_nu
 
 inode_id_t MemoryDecodeGetKey(const char *buf){
     return (*reinterpret_cast<const inode_id_t *>(buf));
+}
+
+void MemoryDecodeHashkeyValuelen(const char *buf, uint64_t &hash_key, uint32_t &value_len){
+    hash_key = *static_cast<const uint64_t *>(buf);
+    value_len = *static_cast<const uint32_t *>(buf + 8);
 }
 
 void LinkNodeUpdateNextPrev(LinkNode *new_node){
@@ -1122,7 +1128,8 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
     LinkNodeSearchKey(res, cur, key);
     if(res.key_find){  //key存在，需要和kvs合并
         uint32_t kvs_key_num, kvs_key_len;
-        MemoryDecodeGetKeyNumLen(kvs.data(), key, kvs_key_num, kvs_key_len);
+        inode_id_t temp_key;
+        MemoryDecodeGetKeyNumLen(kvs.data(), temp_key, kvs_key_num, kvs_key_len);
         bool kvs_is_bptree = kvs_key_num == 0;
         if(res.value_is_bptree) { //新插入的kv是bptree，和kvs合并
             if(!kvs_is_bptree){  // kvs不是Bptree，现有的res是bptree
@@ -1155,7 +1162,7 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
                 
             } else { // kvs是Bptree，现有的res是bptree
                 pointer_t res_bptree = cur->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
-                pointer_t kvs_bptree = *static_cast<const pointer_t *>(kvs.data() + sizeof(inode_id_t) + 4);
+                pointer_t kvs_bptree = *reinterpret_cast<const pointer_t *>(kvs.data() + sizeof(inode_id_t) + 4);
                 BptreeOp bop;
                 bop.root = kvs_bptree;
                 bop.res = kvs_bptree;
@@ -1186,7 +1193,7 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
             return 0;
         }
         if(kvs_is_bptree){ //kvs是Bptree，现有的res不是bptree
-            pointer_t bptree = *static_cast<const pointer_t *>(kvs.data() + sizeof(inode_id_t) + 4);
+            pointer_t bptree = *reinterpret_cast<const pointer_t *>(kvs.data() + sizeof(inode_id_t) + 4);
             BptreeOp bop;
             bop.root = bptree;
             bop.res = bptree;
@@ -1456,7 +1463,7 @@ struct BptreeIndexNodeSearch {  //中间节点查找的路径
     BptreeIndexNodeSearch() : node(INVALID_POINTER), index(0) {}
     BptreeIndexNodeSearch(pointer_t n, uint32_t i) : node(n), index(i) {}
     ~BptreeIndexNodeSearch() {}
-}
+};
 
 struct BptreeSearchResult {
     bool key_find;
@@ -1469,10 +1476,10 @@ struct BptreeSearchResult {
 
     BptreeSearchResult() : key_find(false), index_level(0), leaf_node(INVALID_POINTER), leaf_key_offset(0), leaf_value_len(0) {}
     ~BptreeSearchResult() {}
-}
+};
 
 bool IsIndexNode(pointer_t ptr){
-    uint8_t type = *static_cast<uint8_t *>(NODE_GET_POINTER(ptr));
+    DirNodeType type = *static_cast<DirNodeType *>(NODE_GET_POINTER(ptr));
     return type == DirNodeType::BPTREEINDEXNODE_TYPE;
 }
 
@@ -1503,7 +1510,7 @@ bool BanirySearchIndex(BptreeIndexNode *cur, const uint64_t hash_key, uint32_t &
     }
 
     index = left;
-    if(left == 0 && hash_key < cur->entry[left]) return false; 
+    if(left == 0 && hash_key < cur->entry[left].key) return false; 
     return true;
 }
 
@@ -1551,11 +1558,6 @@ int BptreeSearch(BptreeSearchResult &res, pointer_t root, const uint64_t hash_ke
         }
     }
     return 0;
-}
-
-void MemoryDecodeHashkeyValuelen(const char *buf, uint64_t &hash_key, uint32_t &value_len){
-    hash_key = *static_cast<const uint64_t *>(buf);
-    value_len = *static_cast<const uint32_t *>(buf + 8);
 }
 
 int BptreeLeafNodeSplit(const char *buf, uint32_t all_key_num, uint32_t len, vector<pointer_t> &res){  //只会分裂成两个节点
