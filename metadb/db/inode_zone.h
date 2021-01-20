@@ -37,7 +37,7 @@ public:
 
     int DeleteFlie(pointer_t value_addr);   ////在文件中删除该地址，标记无效kv的个数
 private: 
-    const Option option_;
+    Option option_;
     InodeHashTable *hashtable_;   //全部key-offset存储结构
 
     NVMInodeFile *write_file_;  //nvm正在写文件的结构，指针是nvm指针

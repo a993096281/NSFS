@@ -312,7 +312,7 @@ int InodeHashTable::HashEntryGetKV(InodeHashVersion *version, uint32_t index, co
     return res;
 }
 
-int InodeHashTable::HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value){
+int InodeHashTable::HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, pointer_t &value){
     version->rwlock_[index].WriteLock();
     NvmInodeHashEntry *entry = &(version->buckets_[index]);
     InodeHashEntryLinkOp op;
@@ -451,7 +451,7 @@ void InodeHashTable::MoveEntryToRehash(InodeHashVersion *version, uint32_t index
         free_list.push_back(cur);
         cur = cur_node->next;
     }
-    entry->SetRootPersit(INVALID_POINTER);  //旧version的entry变为空
+    entry->SetRootPersist(INVALID_POINTER);  //旧version的entry变为空
     version->rwlock_[index].Unlock();
 
     for(auto it : free_list) {
