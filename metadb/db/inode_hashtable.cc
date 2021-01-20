@@ -369,7 +369,7 @@ int InodeHashTable::Update(const inode_id_t key, const pointer_t new_value, poin
     return res;
 }
 
-int InodeHashTable::Delete(const inode_id_t key, const pointer_t &value){
+int InodeHashTable::Delete(const inode_id_t key, pointer_t &value){
     bool is_rehash = false;
     InodeHashVersion *version;
     InodeHashVersion *rehash_version;

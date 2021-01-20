@@ -170,7 +170,7 @@ public:
     virtual int Put(const inode_id_t key, const pointer_t value, pointer_t &old_value);
     virtual int Get(const inode_id_t key, pointer_t &value);
     virtual int Update(const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
-    virtual int Delete(const inode_id_t key, const pointer_t &value);
+    virtual int Delete(const inode_id_t key, pointer_t &value);
 
 private:
     const Option option_;

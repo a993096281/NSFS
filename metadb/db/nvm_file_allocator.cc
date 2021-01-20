@@ -173,7 +173,7 @@ void *NVMFileAllocator::Allocate(uint64_t size){
     NVMGroupManager *cur = groups_[type];
     int offset = cur->Allocate(size);
     if(offset == -1){
-        cur = CreateNVMGroupManager(type);
+        cur = CreateNVMGroupManager(static_cast<NVMGroupBlockType>(type));
         groups_[type] = cur;
         offset = cur->Allocate(size);
     }
@@ -192,7 +192,7 @@ void NVMFileAllocator::Free(void *addr, uint64_t len){
 }
 
 void NVMFileAllocator::Free(pointer_t addr, uint64_t len){
-    NVMGroupBlockType type = static_cast<uint8_t>(SelectGroup(len));
+    uint8_t type = static_cast<uint8_t>(SelectGroup(len));
     uint64_t id = GetId(addr);
     uint64_t offset = GetOffset(addr);
     map_mu_.Lock();
