@@ -149,7 +149,7 @@ int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, pointer_t &value
     return 2;  //key不存在
 }
 
-int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t &value){
+int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, pointer_t &value){
     InodeHashEntrySearchResult res;
     HashEntryLinkSearchKey(res, op.root, key);
     if(res.key_find){  //已存在
@@ -291,7 +291,7 @@ int InodeHashTable::HashEntryOnlyInsertKV(InodeHashVersion *version, uint32_t in
     return res;
 }
 
-int HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t new_value, pointer_t &old_value){
+int InodeHashTable::HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t new_value, pointer_t &old_value){
     version->rwlock_[index].WriteLock();
     NvmInodeHashEntry *entry = &(version->buckets_[index]);
     InodeHashEntryLinkOp op;
@@ -303,7 +303,7 @@ int HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_
     return res;
 }
 
-int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, pointer_t &value){
+int InodeHashTable::HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, pointer_t &value){
     //version->rwlock_[index].ReadLock();  //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点是一个问题，延时删除可行或引用计数，
                                                 //暂时简单处理，由于空间分配是往后分配，提前删除没有影响；
     NvmInodeHashEntry *entry = &(version->buckets_[index]);
@@ -312,7 +312,7 @@ int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t k
     return res;
 }
 
-int HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value){
+int InodeHashTable::HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value){
     version->rwlock_[index].WriteLock();
     NvmInodeHashEntry *entry = &(version->buckets_[index]);
     InodeHashEntryLinkOp op;
@@ -324,19 +324,19 @@ int HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_
     return res;
 }
 
-int InodeHashTable::Put(const inode_id_t key, const pointer_t value){
+int InodeHashTable::Put(const inode_id_t key, const pointer_t value, pointer_t &old_value){
     bool is_rehash = false;
     InodeHashVersion *version;
     GetVersionAndRefByWrite(is_rehash, &version);
     uint32_t index = hash_id(key, version->capacity_);
-    
-    int res = HashEntryInsertKV(version, index, key, value);
+
+    int res = HashEntryInsertKV(version, index, key, value, old_value);
     
     version->Unref();
     return res;
 }
 
-int InodeHashTable::Get(const inode_id_t key, const pointer_t &value){
+int InodeHashTable::Get(const inode_id_t key, pointer_t &value){
     bool is_rehash = false;
     InodeHashVersion *version;
     InodeHashVersion *rehash_version;
@@ -392,7 +392,7 @@ int InodeHashTable::Delete(const inode_id_t key, const pointer_t &value){
     return res1 & res2;  //有一个为0则为0
 }
 
-static void InodeHashTable::BackgroundRehashWrapper(void *arg){
+void InodeHashTable::BackgroundRehashWrapper(void *arg){
     reinterpret_cast<InodeHashTable *>(arg)->BackgroundRehash();
 }
 

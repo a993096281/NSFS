@@ -22,17 +22,17 @@ namespace metadb {
 class LinkNodeIterator : public Iterator {
 public:
     LinkNodeIterator(pointer_t node, uint32_t key_offset, uint32_t key_num, uint32_t key_len);
-    virtual ~LinkNodeIterator() {};
+    ~LinkNodeIterator() {};
 
-    virtual bool Valid() const = 0;
+    bool Valid() const ;
     //virtual void Seek(const Slice& target) = 0;
-    virtual void SeekToFirst() = 0;
-    virtual void SeekToLast() = 0;
-    virtual void Next() = 0;
-    virtual void Prev() = 0;
-    virtual string fname() const = 0;
-    virtual uint64_t hash_fname() const = 0;
-    virtual inode_id_t value() const = 0;
+    void SeekToFirst();
+    void SeekToLast();
+    void Next();
+    void Prev();
+    string fname() const ;
+    uint64_t hash_fname() const ;
+    inode_id_t value() const ;
 private:
     LinkNode *cur_node_;
     uint32_t key_offset_;
@@ -103,17 +103,17 @@ inode_id_t LinkNodeIterator::value() const {
 class BptreeIterator : public Iterator {
 public:
     BptreeIterator(BptreeLeafNode *head);
-    virtual ~BptreeIterator() {};
+    ~BptreeIterator() {};
 
-    virtual bool Valid() const = 0;
+    bool Valid() const ;
     //virtual void Seek(const Slice& target) = 0;
-    virtual void SeekToFirst() = 0;
-    virtual void SeekToLast() = 0;
-    virtual void Next() = 0;
-    virtual void Prev() = 0;
-    virtual string fname() const = 0;
-    virtual uint64_t hash_fname() const = 0;
-    virtual inode_id_t value() const = 0;
+    void SeekToFirst();
+    void SeekToLast();
+    void Next();
+    void Prev();
+    string fname() const ;
+    uint64_t hash_fname() const ;
+    inode_id_t value() const ;
 private:
     BptreeLeafNode *leaf_head_;
     BptreeLeafNode *cur_node_;
@@ -182,17 +182,17 @@ inode_id_t BptreeIterator::value() const {
 class EmptyIterator : public Iterator {
 public:
     EmptyIterator() {};
-    virtual ~EmptyIterator() {};
+    ~EmptyIterator() {};
 
-    virtual bool Valid() const { return false; }
+    bool Valid() const { return false; }
     //virtual void Seek(const Slice& target) = 0;
-    virtual void SeekToFirst() {};
-    virtual void SeekToLast() {};
-    virtual void Next() {};
-    virtual void Prev() {};
-    virtual string fname() const { return string(); };
-    virtual uint64_t hash_fname() const { return 0; };
-    virtual inode_id_t value() const { return 0; };
+    void SeekToFirst() {};
+    void SeekToLast() {};
+    void Next() {};
+    void Prev() {};
+    string fname() const { return string(); };
+    uint64_t hash_fname() const { return 0; };
+    inode_id_t value() const { return 0; };
 };
 
 class IteratorWrapper {
@@ -250,15 +250,15 @@ public:
         }
     }
 
-    virtual ~MergingIterator() {
+    ~MergingIterator() {
         delete[] children_;
     }
 
-    virtual bool Valid() const {
+    bool Valid() const {
         return (current_ != NULL);
     }
 
-    virtual void SeekToFirst() {
+    void SeekToFirst() {
         for (int i = 0; i < n_; i++) {
             children_[i].SeekToFirst();
         }
@@ -266,7 +266,7 @@ public:
         direction_ = kForward;
     }
 
-    virtual void SeekToLast() {
+    void SeekToLast() {
         for (int i = 0; i < n_; i++) {
             children_[i].SeekToLast();
         }
@@ -274,7 +274,7 @@ public:
         direction_ = kReverse;
     }
 
-    virtual void Next() {
+    void Next() {
         assert(Valid());
 
         // Ensure that all children are positioned after key().
@@ -300,7 +300,7 @@ public:
         FindSmallest();
     }
 
-    virtual void Prev() {
+    void Prev() {
         assert(Valid());
 
         // Ensure that all children are positioned before key().
@@ -328,9 +328,9 @@ public:
         current_->Prev();
         FindLargest();
     }
-    virtual string fname() const { return current_->fname(); }
-    virtual uint64_t hash_fname() const { return current_->hash_fname(); }
-    virtual inode_id_t value() const { return current_->value(); }
+    string fname() const { return current_->fname(); }
+    uint64_t hash_fname() const { return current_->hash_fname(); }
+    inode_id_t value() const { return current_->value(); }
 
 private:
     void FindSmallest();

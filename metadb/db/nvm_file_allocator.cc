@@ -18,7 +18,7 @@ NVMFileAllocator *file_allocator = nullptr;
 
 int InitNVMFileAllocator(const std::string path, uint64_t size){
     file_allocator = new NVMFileAllocator(path, size);
-    file_pool_pointer = node_allocator->GetPmemAddr();
+    file_pool_pointer = file_allocator->GetPmemAddr();
     return 0;
 }
 
@@ -43,10 +43,10 @@ NVMFileAllocator::NVMFileAllocator(const std::string path, uint64_t size){
     pmemaddr_ = static_cast<char *>(pmem_map_file(path.c_str(), size, PMEM_FILE_CREATE, 0666, &mapped_len_, &is_pmem_));
                 
     if (pmemaddr_ == nullptr) {
-        ERROR_PRINT("mmap nvm path:%s failed!", path.c_str())
+        ERROR_PRINT("mmap nvm path:%s failed!", path.c_str());
         exit(-1);
     } else {
-        DBG_LOG("file allocator ok. path:%s size:%llu mapped_len:%llu is_pmem:%d", path.c_str(), size, mapped_len_, is_pmem_);
+        DBG_LOG("file allocator ok. path:%s size:%lu mapped_len:%lu is_pmem:%d", path.c_str(), size, mapped_len_, is_pmem_);
     }
     assert(size == mapped_len_);
     capacity_ = size;
@@ -102,16 +102,16 @@ void NVMFileAllocator::SetFreeIndex(uint64_t index){
 
 NVMGroupBlockType NVMFileAllocator::SelectGroup(uint64_t size){
     assert(size <= FILE_BASE_SIZE);
-    uint64_t block_1kb = 1ULL * 1024;
-    uint64_t block_4kb = 4ULL * 1024;
-    uint64_t block_16kb = 16ULL * 1024;
-    uint64_t block_64kb = 64ULL * 1024;
-    uint64_t block_256kb = 256ULL * 1024;
-    uint64_t block_1mb = 1ULL * 1024 * 1024;
-    uint64_t block_4mb = 4ULL * 1024 * 1024;
-    uint64_t block_16mb = 16ULL * 1024 * 1024;
-    uint64_t block_32mb = 32ULL * 1024 * 1024;
-    uint64_t block_64mb = 64ULL * 1024 * 1024;
+    static const uint64_t block_1kb = 1ULL * 1024;
+    static const uint64_t block_4kb = 4ULL * 1024;
+    static const uint64_t block_16kb = 16ULL * 1024;
+    static const uint64_t block_64kb = 64ULL * 1024;
+    static const uint64_t block_256kb = 256ULL * 1024;
+    static const uint64_t block_1mb = 1ULL * 1024 * 1024;
+    static const uint64_t block_4mb = 4ULL * 1024 * 1024;
+    static const uint64_t block_16mb = 16ULL * 1024 * 1024;
+    static const uint64_t block_32mb = 32ULL * 1024 * 1024;
+    static const uint64_t block_64mb = 64ULL * 1024 * 1024;
     switch (size){  //直接一块可存下，则选取该块
         case block_1kb:
             return NVMGroupBlockType::NVMGROUPBLOCK_1K_TYPE;
@@ -165,7 +165,7 @@ NVMGroupManager *NVMFileAllocator::CreateNVMGroupManager(NVMGroupBlockType type)
 
 
 void *NVMFileAllocator::Allocate(uint64_t size){
-    uint8_t type = SelectGroup(size);
+    NVMGroupBlockType type = SelectGroup(size);
     groups_mu_[type].Lock();
     if(groups_[type] == nullptr){
         groups_[type] = CreateNVMGroupManager(type);
@@ -192,7 +192,7 @@ void NVMFileAllocator::Free(void *addr, uint64_t len){
 }
 
 void NVMFileAllocator::Free(pointer_t addr, uint64_t len){
-    uint8_t type = SelectGroup(len);
+    NVMGroupBlockType type = SelectGroup(len);
     uint64_t id = GetId(addr);
     uint64_t offset = GetOffset(addr);
     map_mu_.Lock();

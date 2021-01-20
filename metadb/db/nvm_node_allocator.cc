@@ -27,7 +27,7 @@ NVMNodeAllocator::NVMNodeAllocator(const std::string path, uint64_t size){
         ERROR_PRINT("mmap nvm path:%s failed!", path.c_str())
         exit(-1);
     } else {
-        DBG_LOG("node allocator ok. path:%s size:%llu mapped_len:%llu is_pmem:%d", path.c_str(), size, mapped_len_, is_pmem_);
+        DBG_LOG("node allocator ok. path:%s size:%lu mapped_len:%lu is_pmem:%d", path.c_str(), size, mapped_len_, is_pmem_);
     }
     assert(size == mapped_len_);
     capacity_ = size;
@@ -100,7 +100,7 @@ uint64_t NVMNodeAllocator::GetFreeIndex(uint64_t size){
         }
         i++;
     }
-    ERROR_PRINT("node allocate failed, no free space! size:%llu\n", size);
+    ERROR_PRINT("node allocate failed, no free space! size:%lu\n", size);
     exit(-1);
     return 0;
 

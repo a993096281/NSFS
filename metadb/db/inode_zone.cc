@@ -29,12 +29,12 @@ InodeZone::~InodeZone(){
 
 void InodeZone::FilesMapInsert(NVMInodeFile *file){
     files_mu_.Lock();
-    files_.insert(make_pair(GetFileId(file), file));
+    files_.insert(make_pair(GetFileId(FILE_GET_OFFSET(file)), file));
     files_mu_.Unlock();
 
     Mutex *new_lock = new Mutex();
     locks_mu_.Lock();
-    files_locks_.insert(make_pair(GetFileId(file), new_lock));
+    files_locks_.insert(make_pair(GetFileId(FILE_GET_OFFSET(file)), new_lock));
     locks_mu_.Unlock();
 }
 
@@ -119,7 +119,7 @@ int InodeZone::ReadFile(pointer_t addr, std::string &value){
     uint64_t offset = GetFileOffset(addr);
     NVMInodeFile *file = FilesMapGet(id);
     if(file == nullptr) {
-        ERROR_PRINT("not find file! addr:%llu id:%llu offset:%llu\n", addr, id, offset);
+        ERROR_PRINT("not find file! addr:%lu id:%lu offset:%lu\n", addr, id, offset);
         return 2;
     }
     return file->GetKV(offset, value);
@@ -140,12 +140,12 @@ int InodeZone::DeleteFlie(pointer_t value_addr){
     Mutex *file_lock;
     NVMInodeFile *file = FilesMapGetAndGetLock(id, &file_lock);
     if(file == nullptr){
-         ERROR_PRINT("not find file! addr:%llu id:%llu offset:%llu\n", value_addr, id, offset);
+         ERROR_PRINT("not find file! addr:%lu id:%lu offset:%lu\n", value_addr, id, offset);
         return 2;
     }
     file_lock->Lock();
     file->SetInvalidNumPersist(file->invalid_num + 1);
-    file_lock->Unlock;
+    file_lock->Unlock();
     if(file != write_file_ && file->num == file->invalid_num){  //直接回收
         FilesMapDelete(id);
     }

@@ -108,7 +108,7 @@ struct NvmInodeHashEntry {
 
     NvmInodeHashEntry() : root(INVALID_POINTER) {}
     ~NvmInodeHashEntry() {}
-    void SetRootPersit(pointer_t ptr){
+    void SetRootPersist(pointer_t ptr){
         node_allocator->nvm_memcpy_persist(&root, &ptr, sizeof(pointer_t));
     }
 };
@@ -167,8 +167,8 @@ public:
     InodeHashTable(const Option &option, InodeZone *inode_zone);
     virtual ~InodeHashTable();
 
-    virtual int Put(const inode_id_t key, const pointer_t value);
-    virtual int Get(const inode_id_t key, const pointer_t &value);
+    virtual int Put(const inode_id_t key, const pointer_t value, pointer_t &old_value);
+    virtual int Get(const inode_id_t key, pointer_t &value);
     virtual int Update(const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
     virtual int Delete(const inode_id_t key, const pointer_t &value);
 
@@ -190,7 +190,7 @@ private:
     int HashEntryOnlyInsertKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t value);  //已存在则不插入
     int HashEntryUpdateKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
     int HashEntryGetKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, pointer_t &value);
-    int HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, const pointer_t &value);
+    int HashEntryDeleteKV(InodeHashVersion *version, uint32_t index, const inode_id_t key, pointer_t &value);
     inline bool NeedRehash(InodeHashVersion *version);
 
     static void BackgroundRehashWrapper(void *arg);
