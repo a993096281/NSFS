@@ -51,15 +51,8 @@ $(TEST_TARGET) :
 	for test_file in $(TEST_TARGET) ; do \
 	$(CXX) $(CFLAGS) $$test_file.cc -o $$test_file $(LIBRARY) $(LDFLAGS); \
 	done;
-benchmark: clean $(LIBRARY)
-	$(CXX) $(CFLAGS) tests/db_bench.c $(LIBRARY) -o db_bench $(LDFLAGS);
-
-
-test: clean $(LIBRARY)
-	$(CXX) $(CFLAGS) tests/test.c $(LIBRARY) -o test $(LDFLAGS);
-
-ceshi:
-	$(CXX) $(CFLAGS) tests/ceshi.c  src/utils/rwlock.c -o test $(LDFLAGS);
+db_bench: clean $(LIBRARY)
+	$(CXX) $(CFLAGS) tests/db_bench.cc $(LIBRARY) -o db_bench $(LDFLAGS);
 
 INSTALL_PATH := /usr/local
 INCLUDE_PATH := metadb
