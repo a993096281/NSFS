@@ -2487,11 +2487,19 @@ Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target){
 }
 
 //////
-string TranBuf(const char *buf, uint32_t len){  //将buf转成数字，方便打印查看
+char toHex(unsigned char v) {
+    if (v <= 9) {
+        return '0' + v;
+    }
+    return 'A' + v - 10;
+}
+string BufTranToHex(const char *buf, uint32_t len){  //将buf转成数字16进制，方便打印查看
     string res;
-    res.reserve(len + 1);
+    res.reserve(2 * len + 1);
     for(uint32_t i = 0; i < len; i++){
-        res.append(1, '0' + buf[i]);
+        unsigned char c = buf[i];
+        res.push_back(toHex(c >> 4));
+        res.push_back(toHex(c & 0xf));
     }
     return res;
 }
@@ -2503,7 +2511,7 @@ void PrintLinkList(pointer_t root){
         LinkNode *cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
         DBG_LOG("linknode:%llu num:%u len:%u min:%llu max:%llu prev:%llu next:%llu", cur, cur_node->num, \
             cur_node->len, cur_node->min_key, cur_node->max_key, cur_node->prev, cur_node->next);
-        DBG_LOG("linknode buf:%.*s", cur_node->len, TranBuf(cur_node->buf, cur_node->len).c_str());
+        DBG_LOG("linknode buf:%s", BufTranToHex(cur_node->buf, cur_node->len).c_str());
         cur = cur_node->next;
     }
 }

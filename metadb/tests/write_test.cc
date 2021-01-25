@@ -25,10 +25,10 @@ void DirRandomWrite(DB* db){
         key = id;
         value = id;
         snprintf(fname, 8 + 1, "%0*llu", 8, id);
-        DBG_LOG("put:key:%llu fname:%.*s value:%llu", key, 8, fname, value);
+        DBG_LOG("put:key:%llu fname:%.*s value:%llx", key, 8, fname, value);
         ret = db->DirPut(key, Slice(fname, 8), value);
         if(ret != 0){
-            fprintf(stderr, "dir put error! key:%llu fname:%.*s value:%llu\n", key, 8, fname, value);
+            fprintf(stderr, "dir put error! key:%llu fname:%.*s value:%llx\n", key, 8, fname, value);
             fflush(stderr);
             exit(1);
         }
