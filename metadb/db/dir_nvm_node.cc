@@ -2491,7 +2491,7 @@ string TranBuf(const char *buf, uint32_t len){  //将buf转成数字，方便打
     string res;
     res.reserve(len + 1);
     for(uint32_t i = 0; i < len; i++){
-        res += buf[i] + '0';
+        res.append(1, '0' + buf[i]);
     }
     return res;
 }
