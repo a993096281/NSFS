@@ -100,6 +100,20 @@ static void AppendWithSpace(std::string* str, Slice msg) {
   str->append(msg.data(), msg.size());
 }
 
+void trim_space(char *str) {
+    char *p = str;
+    char *p1;
+    if(p)
+    {
+        p1 = p + strlen(str) - 1;
+        while(*p && isspace(*p)) 
+            p++;
+        while(p1 > p && isspace(*p1)) 
+            *p1--=0;
+    }
+    memmove(str, p, p1 - p + 1 + 1);
+}
+
 typedef enum {
     kNoneBenchmarkType = 0,
     kBenchmarkWriteType,
@@ -185,7 +199,7 @@ public:
                     histograms_[i] = other.histograms_[i];
                     other.histograms_[i] = nullptr;
                 }
-                else if(other->histograms_[i] != nullptr){
+                else if(other.histograms_[i] != nullptr){
                     histograms_[i]->Merge(*other.histograms_[i]);
                 }
             }
@@ -204,7 +218,7 @@ public:
             uint64_t now = get_now_micros();;
             uint64_t micros = now - last_op_finish_;
             if(histograms_[op_type] == nullptr){
-                histograms_[op_type]->Add(micros)
+                histograms_[op_type]->Add(micros);
             }
             // if (micros > 20000) {
             //     std::fprintf(stderr, "long op: %.1f micros%30s\r", micros, "");
@@ -256,7 +270,7 @@ public:
             for(int i = 0; i < kBenchmarkTypeNums; i++){
                 if(histograms_[i] == nullptr) continue;
                 string op_str;
-                BenchmarkOperationTypeToString(i, op_str);
+                BenchmarkOperationTypeToString(static_cast<BenchmarkOperationType>(i), op_str);
                 std::fprintf(stdout, "Microseconds per %s:\n%s\n", op_str.c_str(), 
                         histograms_[i]->ToString().c_str());
             }
@@ -428,7 +442,7 @@ void RunBenchmark(DB *db, int n, char *name, void (*method)(ThreadState*)){
     shared->mu.Unlock();
 
     for (int i = 1; i < n; i++) {
-        arg[0].thread->stats.Merge(arg[i].thread->stats)
+        arg[0].thread->stats.Merge(arg[i].thread->stats);
     }
     arg[0].thread->stats.Report(name);
 
@@ -692,7 +706,7 @@ void DirRandomRange(ThreadState* thread){
         key = id;
         Iterator *it = thread->db->DirGetIterator(key);
         if(it != nullptr){
-            for(it->SeekToFirst(); it->Valid(); it->Next){
+            for(it->SeekToFirst(); it->Valid(); it->Next()){
                 fname = it->fname();
                 value = it->value();
             }
@@ -711,7 +725,7 @@ void RunTest(){
     DB *db;
     Option option;
     
-    SetOption(&db.config);
+    SetOption(&option);
 
     PrintHeader();
 

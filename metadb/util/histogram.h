@@ -6,7 +6,7 @@
  */
 
 #ifndef _METADB_HISTOGRAM_H_
-#define _METADB_HISTOGRAM_H_
+#define _METADB_HISTOGRAM_H_
 
 #include <string>
 
@@ -42,7 +42,7 @@ private:
     double buckets_[kNumBuckets];
 };
 
-} // namespace name
+}  //namespace name
 
 
 
