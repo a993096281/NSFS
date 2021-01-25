@@ -29,16 +29,18 @@ using namespace metadb;
 using metadb::Histogram;
 
 static const char* FLAGS_benchmarks =
-    "dir_fillrandom,"
-    "inode_fillrandom,"
-    "dir_readrandom,"
-    "inode_readrandom,"
-    "dir_deleterandom,"
-    "inode_deleterandom,"
-    "dir_updaterandom,"
-    "inode_updaterandom,"
+    "dir_fillrandom,";
 
-    ;
+    //"dir_fillrandom,"
+    //"inode_fillrandom,"
+    //"dir_readrandom,"
+    //"inode_readrandom,"
+    //"dir_deleterandom,"
+    //"inode_deleterandom,"
+    //"dir_updaterandom,"
+    //"inode_updaterandom,"
+    //"dir_rangeread,"
+
 static const char* FLAGS_db_path = "/home/lzw/ceshi";  //暂时没用
 
 //测试写的总kv数
