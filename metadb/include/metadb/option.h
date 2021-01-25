@@ -34,7 +34,7 @@ public:
     Option() {}
     ~Option() {}
 
-    void Print(){
+    void Print() const {
         fprintf(stdout, "---------------Option---------------\n");
 
         fprintf(stdout, "DIR_FIRST_HASH_MAX_CAPACITY:%llu DIR_LINKNODE_TRAN_SECOND_HASH_NUM:%llu \n",  \
