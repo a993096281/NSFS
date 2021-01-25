@@ -18,7 +18,7 @@ namespace metadb {
 class Iterator {
 public:
     Iterator() {};
-    virtual ~Iterator();
+    virtual ~Iterator() {};
 
     virtual bool Valid() const = 0;
     //virtual void Seek(const Slice& target) = 0;
@@ -29,7 +29,6 @@ public:
     virtual string fname() const = 0;
     virtual uint64_t hash_fname() const = 0;
     virtual inode_id_t value() const = 0;
-
 };
 
 

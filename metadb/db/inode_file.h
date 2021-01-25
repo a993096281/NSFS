@@ -71,18 +71,9 @@ public:
 
 };
 
-NVMInodeFile *AllocNVMInodeFlie(){
-    NVMInodeFile *file = static_cast<NVMInodeFile *>(file_allocator->AllocateAndInit(INODE_FILE_SIZE, 0));
-    return file;
-}
-
-static inline uint64_t GetFileId(pointer_t addr){   //以INODE_FILE_SIZE划分的id
-    return addr / INODE_FILE_SIZE;
-}
-
-static inline uint64_t GetFileOffset(pointer_t addr){   //以INODE_FILE_SIZE划分的offset
-    return addr % INODE_FILE_SIZE;
-}
+NVMInodeFile *AllocNVMInodeFlie();
+static inline uint64_t GetFileId(pointer_t addr);
+static inline uint64_t GetFileOffset(pointer_t addr);
 
 } // namespace name
 

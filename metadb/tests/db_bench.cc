@@ -26,7 +26,7 @@
 
 using namespace std;
 using namespace metadb;
-//using metadb::Histogram;
+using metadb::Histogram;
 
 static const char* FLAGS_benchmarks =
     "dir_fillrandom,"
@@ -200,7 +200,7 @@ public:
                     other.histograms_[i] = nullptr;
                 }
                 else if(other.histograms_[i] != nullptr){
-                    histograms_[i]->Merge(*other.histograms_[i]);
+                    histograms_[i]->Merge((*other.histograms_[i]));
                 }
             }
         }

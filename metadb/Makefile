@@ -1,6 +1,6 @@
 CC = gcc
 CXX = g++
-LDFLAGS = -pthread -g -Wformat=0
+LDFLAGS = -pthread -g -Wformat=0 -lpmem
 DEFS = 
 CFLAGS = -I./include
 CFLAGS += $(DEFS)
@@ -18,7 +18,8 @@ LIB_SOURCES =  \
 	db/metadb.cc  \
 	db/nvm_file_allocator.cc  \
 	db/nvm_node_allocator.cc  \
-	db/thread_pool.cc  
+	db/thread_pool.cc  \
+	util/histogram.cc
 	
 TEST_TARGET = tests/db_bench \
 
