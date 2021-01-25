@@ -34,9 +34,9 @@ public:
     Option() {}
     ~Option() {}
 
-    Print(){
+    void Print(){
         fprintf(stdout, "---------------Option---------------\n");
-        
+
         fprintf(stdout, "DIR_FIRST_HASH_MAX_CAPACITY:%llu DIR_LINKNODE_TRAN_SECOND_HASH_NUM:%llu \n",  \
             DIR_FIRST_HASH_MAX_CAPACITY, DIR_LINKNODE_TRAN_SECOND_HASH_NUM);
         fprintf(stdout, "DIR_SECOND_HASH_INIT_SIZE:%llu DIR_SECOND_HASH_TRIG_REHASH_TIMES:%lf \n",  \
