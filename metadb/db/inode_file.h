@@ -8,6 +8,9 @@
 #define _METADB_INODE_FILE_H_
 
 #include <stdint.h>
+
+#include "metadb/inode.h"
+#include "metadb/slice.h"
 #include "format.h"
 #include "nvm_file_allocator.h"
 
@@ -71,9 +74,15 @@ public:
 
 };
 
-NVMInodeFile *AllocNVMInodeFlie();
-static inline uint64_t GetFileId(pointer_t addr);
-static inline uint64_t GetFileOffset(pointer_t addr);
+extern NVMInodeFile *AllocNVMInodeFlie();
+
+static inline uint64_t GetFileId(pointer_t addr){   //以INODE_FILE_SIZE划分的id
+    return addr / INODE_FILE_SIZE;
+}
+
+static inline uint64_t GetFileOffset(pointer_t addr){   //以INODE_FILE_SIZE划分的offset
+    return addr % INODE_FILE_SIZE;
+}
 
 } // namespace name
 
