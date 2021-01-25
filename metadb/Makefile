@@ -7,6 +7,7 @@ CFLAGS += $(DEFS)
 AR = ar
 ARFLAGS = rs
 LIB_SOURCES =  \
+	db/debug.cc \
 	db/dir_db.cc  \
 	db/dir_hashtable.cc  \
 	db/dir_nvm_node.cc  \
