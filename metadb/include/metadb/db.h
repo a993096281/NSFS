@@ -22,16 +22,16 @@ public:
     static int Open(const Option &option, const std::string &name, DB **dbptr);
 
     DB() { };
-    virtual ~DB();
+    virtual ~DB() { };
 
-    virtual int DirPut(const inode_id_t key, const Slice &fname, const inode_id_t value);
-    virtual int DirGet(const inode_id_t key, const Slice &fname, inode_id_t &value);
-    virtual int DirDelete(const inode_id_t key, const Slice &fname);
-    virtual Iterator* DirGetIterator(const inode_id_t target);
+    virtual int DirPut(const inode_id_t key, const Slice &fname, const inode_id_t value) = 0;
+    virtual int DirGet(const inode_id_t key, const Slice &fname, inode_id_t &value) = 0;
+    virtual int DirDelete(const inode_id_t key, const Slice &fname) = 0;
+    virtual Iterator* DirGetIterator(const inode_id_t target) = 0;
 
-    virtual int InodePut(const inode_id_t key, const Slice &value);
-    virtual int InodeGet(const inode_id_t key, std::string &value);
-    virtual int InodeDelete(const inode_id_t key);
+    virtual int InodePut(const inode_id_t key, const Slice &value) = 0;
+    virtual int InodeGet(const inode_id_t key, std::string &value) = 0;
+    virtual int InodeDelete(const inode_id_t key) = 0;
 };
 
 
