@@ -19,11 +19,11 @@ int DB::Open(const Option &option, const std::string &name, DB **dbptr){
 
 MetaDB::MetaDB(const Option &option, const std::string &name) : option_(option), db_name_(name) {
     option_.Print();
-    dir_db_ = new DirDB(option);
-    inode_db_ = new InodeDB(option, option.INODE_MAX_ZONE_NUM);
     if(!option.node_allocator_path.empty()) InitNVMNodeAllocator(option.node_allocator_path, option.node_allocator_size);
     if(!option.file_allocator_path.empty()) InitNVMFileAllocator(option.file_allocator_path, option.file_allocator_size);
     InitThreadPool(option.thread_pool_count);
+    dir_db_ = new DirDB(option);
+    inode_db_ = new InodeDB(option, option.INODE_MAX_ZONE_NUM);
 }
 
 MetaDB::~MetaDB(){
