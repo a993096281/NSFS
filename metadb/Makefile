@@ -13,6 +13,7 @@ LIB_SOURCES =  \
 	db/dir_iterator.cc  \
 	db/dir_nvm_node.cc  \
 	db/inode_db.cc  \
+	db/inode_file.cc  \
 	db/inode_hashtable.cc  \
 	db/inode_zone.cc  \
 	db/metadb.cc  \

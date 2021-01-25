@@ -10,7 +10,7 @@
 
 #include "histogram.h"
 
-namespace metadb {
+namespace metadb {
 
 const double Histogram::kBucketLimit[kNumBuckets] = {
     1,
@@ -279,4 +279,4 @@ std::string Histogram::ToString() const {
 
 
 
-} // namespace name
+} // namespace name
