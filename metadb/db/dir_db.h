@@ -26,6 +26,8 @@ public:
     virtual int DirGet(const inode_id_t key, const Slice &fname, inode_id_t &value);
     virtual int DirDelete(const inode_id_t key, const Slice &fname);
     virtual Iterator* DirGetIterator(const inode_id_t target);
+
+    virtual void PrintDir();
 private:
     const Option option_;
     DirHashTable *hashtable_;

@@ -2486,5 +2486,17 @@ Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target){
 }
 
 //////
+void PrintLinkList(pointer root){
+    if(IS_INVALID_POINTER(root)) return;
+    pointer_t cur = root;
+
+    while(!IS_INVALID_POINTER(cur)) {
+        LinkNode *cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
+        DBG_LOG("linknode:%llu num:%u len:%u min:%llu max:%llu prev:%llu next:%llu", cur, cur_node->num, \
+            cur_node->len, cur_node->min_key, cur_node->max_key, cur_node->prev, cur_node->next);
+        DBG_LOG("linknode buf:%.*s", cur_node->len, cur_node->buf);
+        cur = cur_node->next;
+    }
+}
 
 } // namespace name

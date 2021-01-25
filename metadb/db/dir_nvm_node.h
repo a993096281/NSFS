@@ -370,6 +370,10 @@ bool IsIndexNode(pointer_t ptr);
 
 
 Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target);
+
+
+//////
+void PrintLinkList(pointer root);
 } // namespace name
 
 

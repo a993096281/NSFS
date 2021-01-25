@@ -33,5 +33,9 @@ Iterator* DirDB::DirGetIterator(const inode_id_t target){
     return hashtable_->DirHashTableGetIterator(target);
 }
 
+void DirDB::PrintDir(){
+    hashtable_->PrintHashTable();
+}
+
 
 } // namespace name

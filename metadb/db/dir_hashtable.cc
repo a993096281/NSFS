@@ -503,5 +503,19 @@ Iterator* DirHashTable::DirHashTableGetIterator(const inode_id_t target){
         return (rehash_version != nullptr) ? rehash_it : vesion_it;   //
 }
 
+void DirHashTable::PrintHashTable(){
+    if(version_ == nullptr) {
+        DBG_LOG("dir hashtable verison is nullptr");
+        return ;
+    }
+    HashVersion *verison = version_;
+    DBG_LOG("dir hashtable verion: capacity:%llu node_num:%llu", version->capacity_, version->node_num_.load());
+    for(uint32_t i = 0; i < version_->capacity_; i++){
+        NvmHashEntry *entry = &(version->buckets_[i]);
+        DBG_LOG("dir hashtable hash entry:%u root:%llu node_num:%llu", i, entry->root, entry->node_num);
+        PrintLinkList(entry->root);
+    }
+}
+
 
 } // namespace name

@@ -102,6 +102,9 @@ public:
     virtual int Delete(const inode_id_t key, const Slice &fname);
     virtual Iterator* DirHashTableGetIterator(const inode_id_t target);
 
+    
+    virtual void PrintHashTable();
+
 private:
     const Option option_;
     uint32_t hash_type_;  //1是一级hash，2是二级hash；

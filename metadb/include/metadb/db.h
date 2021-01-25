@@ -32,6 +32,9 @@ public:
     virtual int InodePut(const inode_id_t key, const Slice &value) = 0;
     virtual int InodeGet(const inode_id_t key, std::string &value) = 0;
     virtual int InodeDelete(const inode_id_t key) = 0;
+
+    ///统计
+    virtual void PrintDir() = 0;
 };
 
 

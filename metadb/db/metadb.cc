@@ -65,4 +65,8 @@ int MetaDB::InodeDelete(const inode_id_t key){
     return inode_db_->InodeDelete(key);
 }
 
+void MetaDB::PrintDir(){
+    dir_db_->PrintDir();
+}
+
 }

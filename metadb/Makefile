@@ -57,6 +57,8 @@ $(TEST_TARGET) :
 	done;
 db_bench: clean $(LIBRARY)
 	$(CXX) $(CFLAGS) tests/db_bench.cc $(LIBRARY) -o db_bench $(LDFLAGS);
+test: clean $(LIBRARY)
+	$(CXX) $(CFLAGS) tests/write_test.cc $(LIBRARY) -o test $(LDFLAGS);
 
 INSTALL_PATH := /usr/local
 INCLUDE_PATH := metadb
