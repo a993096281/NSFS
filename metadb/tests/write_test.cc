@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
     DB *db;
     Option option;
     option.DIR_FIRST_HASH_MAX_CAPACITY = 1;
+    option.INODE_MAX_ZONE_NUM = 1;
     int ret = DB::Open(option, "testdb", &db);
     if(ret != 0){
         fprintf(stderr, "open db error, Test stop\n");
