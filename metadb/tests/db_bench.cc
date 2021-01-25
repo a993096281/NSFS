@@ -56,7 +56,7 @@ static uint64_t FLAGS_deletes = 10000;
 static uint64_t FLAGS_updates = 10000;
 
 // 测试线程个数，每个线程根据
-static int FLAGS_threads = 4;
+static int FLAGS_threads = 1;
 
 //value大小
 static int FLAGS_value_size = 8;  //目录树fname长度，inode stat长度 
@@ -220,8 +220,9 @@ public:
             uint64_t now = get_now_micros();;
             uint64_t micros = now - last_op_finish_;
             if(histograms_[op_type] == nullptr){
-                histograms_[op_type]->Add(micros);
+                histograms_[op_type] = new Histogram();
             }
+            histograms_[op_type]->Add(micros);
             // if (micros > 20000) {
             //     std::fprintf(stderr, "long op: %.1f micros%30s\r", micros, "");
             //     std::fflush(stderr);
