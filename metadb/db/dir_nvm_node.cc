@@ -7,6 +7,7 @@
 
 #include <queue>
 
+#include "metadb/debug.h"
 #include "dir_nvm_node.h"
 #include "dir_iterator.h"
 
