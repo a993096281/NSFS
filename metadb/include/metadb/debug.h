@@ -8,6 +8,7 @@
 #define _METADB_DEBUG_H_
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <pthread.h>
 #include <sys/syscall.h>
@@ -44,7 +45,7 @@ public:
         }
     }
 
-    static DebugLogger* GetInstance(){
+    static inline DebugLogger* GetInstance(){
         if(log_ == nullptr)
         {
             log_ = new DebugLogger(LOG_FILE_PATH);
@@ -52,7 +53,7 @@ public:
         return log_;
     }
 
-    FILE* GetFp() { return fp; }
+    inline FILE* GetFp() { return fp; }
 
 protected:
     static DebugLogger* log_;
