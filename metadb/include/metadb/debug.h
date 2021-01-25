@@ -64,6 +64,7 @@ protected:
 #define DBG_LOG(format, a...) \
 do{ \
     fprintf(metadb::DebugLogger::GetInstance()->GetFp(), "[%-18s][%4d][%5d]: " #format"\n", __FUNCTION__, __LINE__, get_tid(), ##a); \
+    fflush(metadb::DebugLogger::GetInstance()->GetFp()); \
 }while(0)
 
 #define DBG_PRINT(format, a...) \

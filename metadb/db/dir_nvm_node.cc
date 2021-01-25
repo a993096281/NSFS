@@ -2522,7 +2522,7 @@ void PrintLinkList(pointer_t root){
             } 
             else {
                 string kvs = BufTranToHex(cur_node->buf + offset + sizeof(inode_id_t) + 8, key_len);
-                DBG_LOG("i:%u key:%llu key_num:%u key_len:%u kvs:%.*s", i, key, key_num, key_len, kvs.size(), kvs.c_str());
+                DBG_LOG("i:%u key:%llu key_num:%u key_len:%u kvs:%s", i, key, key_num, key_len, kvs.c_str());
                 offset += sizeof(inode_id_t) + 8 + key_len;
             }
         }
