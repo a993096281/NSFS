@@ -2486,7 +2486,7 @@ Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target){
 }
 
 //////
-void PrintLinkList(pointer root){
+void PrintLinkList(pointer_t root){
     if(IS_INVALID_POINTER(root)) return;
     pointer_t cur = root;
 

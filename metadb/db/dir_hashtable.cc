@@ -508,9 +508,9 @@ void DirHashTable::PrintHashTable(){
         DBG_LOG("dir hashtable verison is nullptr");
         return ;
     }
-    HashVersion *verison = version_;
+    HashVersion *version = version_;
     DBG_LOG("dir hashtable verion: capacity:%llu node_num:%llu", version->capacity_, version->node_num_.load());
-    for(uint32_t i = 0; i < version_->capacity_; i++){
+    for(uint32_t i = 0; i < version->capacity_; i++){
         NvmHashEntry *entry = &(version->buckets_[i]);
         DBG_LOG("dir hashtable hash entry:%u root:%llu node_num:%llu", i, entry->root, entry->node_num);
         PrintLinkList(entry->root);
