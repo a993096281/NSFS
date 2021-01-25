@@ -725,7 +725,7 @@ void RunTest(){
     DB *db;
     Option option;
     
-    SetOption(&option);
+    SetOption(option);
 
     PrintHeader();
 
