@@ -430,7 +430,7 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             uint32_t insert_offset = res.fname_offset;
             uint32_t need_move = cur->len - insert_offset;
             if(need_move > 0) {
-                memmove(buf + add_len, buf + insert_offset, need_move);
+                memmove(buf + insert_offset + add_len, buf + insert_offset, need_move);
             } 
             MemoryEncodeFnameKey(buf + insert_offset, fname, value);
             insert_offset = res.key_offset + 8;
@@ -525,7 +525,7 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
         uint32_t insert_offset = res.key_offset;
         uint32_t need_move = cur->len - insert_offset;
         if(need_move > 0) {
-            memmove(buf + add_len, buf + insert_offset, need_move);
+            memmove(buf + insert_offset + add_len, buf + insert_offset, need_move);
         } 
         MemoryEncodeKey(buf + insert_offset, key);
         insert_offset += sizeof(inode_id_t);
@@ -1386,7 +1386,7 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
         uint32_t insert_offset = res.key_offset;
         uint32_t need_move = cur->len - insert_offset;
         if(need_move > 0) {
-            memmove(buf + add_len, buf + insert_offset, need_move);
+            memmove(buf + insert_offset + add_len, buf + insert_offset, need_move);
         } 
         memcpy(buf + insert_offset, kvs.data(), add_len);
 
@@ -2498,8 +2498,8 @@ string BufTranToHex(const char *buf, uint32_t len){  //将buf转成数字16进�
     res.reserve(2 * len + 1);
     for(uint32_t i = 0; i < len; i++){
         unsigned char c = buf[i];
-        res.push_back(toHex(c >> 4));
         res.push_back(toHex(c & 0xf));
+        res.push_back(toHex(c >> 4));
     }
     return res;
 }
@@ -2511,6 +2511,20 @@ void PrintLinkList(pointer_t root){
         LinkNode *cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
         DBG_LOG("linknode:%llu num:%u len:%u min:%llu max:%llu prev:%llu next:%llu", cur, cur_node->num, \
             cur_node->len, cur_node->min_key, cur_node->max_key, cur_node->prev, cur_node->next);
+        inode_id_t key;
+        uint32_t key_num, key_len;
+        uint32_t offset = 0;
+        for(uint32_t i = 0; i < cur_node->num; i++){
+            cur_node->DecodeBufGetKeyNumLen(offset, key, key_num, key_len);
+            if(key_num = 0){
+                DBG_LOG("i:%u key:%llu btree:%llu", i, key, cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4));
+                offset += sizeof(inode_id_t) + 4 + 8;
+            } 
+            else {
+                DBG_LOG("i:%u key:%llu key_num:%u key_len:%u kvs:%s", i, key, key_num, key_len, BufTranToHex(cur_node->buf + offset + sizeof(inode_id_t) + 8).c_str());
+                offset += sizeof(inode_id_t) + 8 + key_len;
+            }
+        }
         DBG_LOG("linknode buf:%s", BufTranToHex(cur_node->buf, cur_node->len).c_str());
         cur = cur_node->next;
     }
