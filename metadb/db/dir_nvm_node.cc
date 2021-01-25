@@ -2521,11 +2521,10 @@ void PrintLinkList(pointer_t root){
                 offset += sizeof(inode_id_t) + 4 + 8;
             } 
             else {
-                DBG_LOG("i:%u key:%llu key_num:%u key_len:%u kvs:%s", i, key, key_num, key_len, BufTranToHex(cur_node->buf + offset + sizeof(inode_id_t) + 8).c_str());
+                DBG_LOG("i:%u key:%llu key_num:%u key_len:%u kvs:%s", i, key, key_num, key_len, BufTranToHex(cur_node->buf + offset + sizeof(inode_id_t) + 8, key_len).c_str());
                 offset += sizeof(inode_id_t) + 8 + key_len;
             }
         }
-        DBG_LOG("linknode buf:%s", BufTranToHex(cur_node->buf, cur_node->len).c_str());
         cur = cur_node->next;
     }
 }
