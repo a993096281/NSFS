@@ -27,7 +27,7 @@ NVMNodeAllocator::NVMNodeAllocator(const std::string path, uint64_t size){
         ERROR_PRINT("mmap nvm path:%s failed!", path.c_str());
         exit(-1);
     } else {
-        DBG_LOG("node allocator ok. path:%s size:%lu mapped_len:%lu is_pmem:%d", path.c_str(), size, mapped_len_, is_pmem_);
+        DBG_LOG("node allocator ok. path:%s size:%lu mapped_len:%lu is_pmem:%d addr:%p", path.c_str(), size, mapped_len_, is_pmem_, pmemaddr_);
     }
     assert(size == mapped_len_);
     capacity_ = size;
