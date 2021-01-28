@@ -484,6 +484,7 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             new_node->SetBufNodrain(insert_offset + add_len, cur->buf + insert_offset, need_move);
         }
         char *buf = new char[add_len];
+        insert_offset = 0;
         MemoryEncodeKey(buf + insert_offset, key);
         insert_offset += sizeof(inode_id_t);
         MemoryEncodeKVnumKVlen(buf + insert_offset, 1, 8 + 4 + fname.size() + sizeof(inode_id_t));
