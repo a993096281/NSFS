@@ -2495,7 +2495,6 @@ char toHex(unsigned char v) {
 }
 string BufTranToHex(const char *buf, uint32_t len){  //将buf转成数字16进制，方便打印查看
     string res;
-    res.reserve(2 * len + 1);
     for(uint32_t i = 0; i < len; i++){
         unsigned char c = buf[i];
         res.push_back(toHex(c & 0xf));
@@ -2516,13 +2515,13 @@ void PrintLinkList(pointer_t root){
         uint32_t offset = 0;
         for(uint32_t i = 0; i < cur_node->num; i++){
             cur_node->DecodeBufGetKeyNumLen(offset, key, key_num, key_len);
-            if(key_num = 0){
+            if(key_num == 0){
                 DBG_LOG("i:%u key:%llu btree:%llu", i, key, cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4));
                 offset += sizeof(inode_id_t) + 4 + 8;
             } 
             else {
                 string kvs = BufTranToHex(cur_node->buf + offset + sizeof(inode_id_t) + 8, key_len);
-                DBG_LOG("i:%u key:%llu key_num:%u key_len:%u kvs:%s", i, key, key_num, key_len, kvs.c_str());
+                DBG_LOG("i:%u key:%llu key_num:%u key_len:%u kvs:%.*s", i, key, key_num, key_len, kvs.size(), kvs.c_str());
                 offset += sizeof(inode_id_t) + 8 + key_len;
             }
         }
