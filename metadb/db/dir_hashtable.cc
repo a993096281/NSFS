@@ -509,10 +509,10 @@ void DirHashTable::PrintHashTable(){
         return ;
     }
     HashVersion *version = version_;
-    DBG_LOG("dir hashtable verion: capacity:%llu node_num:%llu", version->capacity_, version->node_num_.load());
+    DBG_LOG("dir hashtable verion: capacity:%lu node_num:%lu", version->capacity_, version->node_num_.load());
     for(uint32_t i = 0; i < version->capacity_; i++){
         NvmHashEntry *entry = &(version->buckets_[i]);
-        DBG_LOG("dir hashtable hash entry:%u root:%llu node_num:%llu", i, entry->root, entry->node_num);
+        DBG_LOG("dir hashtable hash entry:%u root:%lu node_num:%lu", i, entry->root, entry->node_num);
         PrintLinkList(entry->root);
     }
 }

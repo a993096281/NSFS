@@ -37,15 +37,15 @@ public:
     void Print() const {
         fprintf(stdout, "---------------Option---------------\n");
 
-        fprintf(stdout, "DIR_FIRST_HASH_MAX_CAPACITY:%llu DIR_LINKNODE_TRAN_SECOND_HASH_NUM:%llu \n",  \
+        fprintf(stdout, "DIR_FIRST_HASH_MAX_CAPACITY:%lu DIR_LINKNODE_TRAN_SECOND_HASH_NUM:%lu \n",  \
             DIR_FIRST_HASH_MAX_CAPACITY, DIR_LINKNODE_TRAN_SECOND_HASH_NUM);
-        fprintf(stdout, "DIR_SECOND_HASH_INIT_SIZE:%llu DIR_SECOND_HASH_TRIG_REHASH_TIMES:%lf \n",  \
+        fprintf(stdout, "DIR_SECOND_HASH_INIT_SIZE:%lu DIR_SECOND_HASH_TRIG_REHASH_TIMES:%lf \n",  \
             DIR_SECOND_HASH_INIT_SIZE, DIR_SECOND_HASH_TRIG_REHASH_TIMES);
-        fprintf(stdout, "INODE_MAX_ZONE_NUM:%llu INODE_HASHTABLE_INIT_SIZE:%llu INODE_HASHTABLE_TRIG_REHASH_TIMES:%lf\n",  \
+        fprintf(stdout, "INODE_MAX_ZONE_NUM:%lu INODE_HASHTABLE_INIT_SIZE:%lu INODE_HASHTABLE_TRIG_REHASH_TIMES:%lf\n",  \
             INODE_MAX_ZONE_NUM, INODE_HASHTABLE_INIT_SIZE, INODE_HASHTABLE_TRIG_REHASH_TIMES);
-        fprintf(stdout, "node_allocator_path:%s node_allocator_size:%llu MB\n",  \
+        fprintf(stdout, "node_allocator_path:%s node_allocator_size:%lu MB\n",  \
             node_allocator_path.c_str(), node_allocator_size / (1024 * 1024));
-        fprintf(stdout, "file_allocator_path:%s file_allocator_size:%llu MB\n",  \
+        fprintf(stdout, "file_allocator_path:%s file_allocator_size:%lu MB\n",  \
             file_allocator_path.c_str(), file_allocator_size / (1024 * 1024));
         fprintf(stdout, "thread_pool_count:%u \n", thread_pool_count);
 

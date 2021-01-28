@@ -368,10 +368,10 @@ void PrintHeader() {
     fprintf(stdout, "Keys:       %d bytes each\n", FLAGS_key_size);
     fprintf(stdout, "Values:     %d bytes each\n", FLAGS_value_size);
     fprintf(stdout, "Threads:    %d \n", FLAGS_threads);
-    fprintf(stdout, "Entries:    %llu (%.2f MB)\n", FLAGS_nums, (1.0 * (FLAGS_key_size + FLAGS_value_size) * FLAGS_nums) / 1048576.0);
-    fprintf(stdout, "Reads:      %llu \n", (FLAGS_reads) ? FLAGS_reads : FLAGS_nums);
-    fprintf(stdout, "Deletes:    %llu \n", (FLAGS_deletes) ? FLAGS_deletes : FLAGS_nums);
-    fprintf(stdout, "Updates:    %llu \n", (FLAGS_updates) ? FLAGS_updates : FLAGS_nums);
+    fprintf(stdout, "Entries:    %lu (%.2f MB)\n", FLAGS_nums, (1.0 * (FLAGS_key_size + FLAGS_value_size) * FLAGS_nums) / 1048576.0);
+    fprintf(stdout, "Reads:      %lu \n", (FLAGS_reads) ? FLAGS_reads : FLAGS_nums);
+    fprintf(stdout, "Deletes:    %lu \n", (FLAGS_deletes) ? FLAGS_deletes : FLAGS_nums);
+    fprintf(stdout, "Updates:    %lu \n", (FLAGS_updates) ? FLAGS_updates : FLAGS_nums);
     fprintf(stdout, "------------------------------------------------\n");
     fflush(stdout);
 }
@@ -475,7 +475,7 @@ void DirRandomWrite(ThreadState* thread){
 
         ret = thread->db->DirPut(key, Slice(fname, FLAGS_value_size), value);
         if(ret != 0){
-            fprintf(stderr, "dir put error! key:%llu fname:%.*s value:%llu\n", key, FLAGS_value_size, fname, value);
+            fprintf(stderr, "dir put error! key:%lu fname:%.*s value:%lu\n", key, FLAGS_value_size, fname, value);
             fflush(stderr);
             exit(1);
         }
@@ -503,7 +503,7 @@ void InodeRandomWrite(ThreadState* thread){
 
         ret = thread->db->InodePut(key, Slice(value, FLAGS_value_size));
         if(ret != 0){
-            fprintf(stderr, "inode put error! key:%llu value:%.*s \n", key, FLAGS_value_size, value);
+            fprintf(stderr, "inode put error! key:%lu value:%.*s \n", key, FLAGS_value_size, value);
             fflush(stderr);
             exit(1);
         }
@@ -533,16 +533,16 @@ void DirRandomRead(ThreadState* thread){
 
         ret = thread->db->DirGet(key, Slice(fname, FLAGS_value_size), value);
         if(ret != 0 && ret != 2){
-            fprintf(stderr, "dir get error! key:%llu fname:%.*s\n", key, FLAGS_value_size, fname);
+            fprintf(stderr, "dir get error! key:%lu fname:%.*s\n", key, FLAGS_value_size, fname);
             fflush(stderr);
             exit(1);
         }
         if(ret == 0) {
-            if(value != key) fprintf(stdout, "dir get wrong value! key:%llu fname:%.*s value:%llu\n", key, FLAGS_value_size, fname, value);
+            if(value != key) fprintf(stdout, "dir get wrong value! key:%lu fname:%.*s value:%lu\n", key, FLAGS_value_size, fname, value);
             found++;
         }
         else{
-            //fprintf(stdout, "dir read no found! key:%llu fname:%.*s\n", key, FLAGS_value_size, fname);
+            //fprintf(stdout, "dir read no found! key:%lu fname:%.*s\n", key, FLAGS_value_size, fname);
         }
         thread->stats.FinishedOp(1, kBenchmarkReadType);
     }
@@ -550,7 +550,7 @@ void DirRandomRead(ThreadState* thread){
     delete fname;
 
     char msg[100];
-    snprintf(msg, sizeof(msg), "(%llu of %llu found)", found, nums);
+    snprintf(msg, sizeof(msg), "(%lu of %lu found)", found, nums);
     thread->stats.AddMessage(msg);
 }
 
@@ -570,7 +570,7 @@ void InodeRandomRead(ThreadState* thread){
 
         ret = thread->db->InodeGet(key, value);
         if(ret != 0 && ret != 2){
-            fprintf(stderr, "inode get error! key:%llu \n", key);
+            fprintf(stderr, "inode get error! key:%lu \n", key);
             fflush(stderr);
             exit(1);
         }
@@ -578,13 +578,13 @@ void InodeRandomRead(ThreadState* thread){
             found++;
         }
         else{
-            //fprintf(stdout, "inode read no found! key:%llu \n", key);
+            //fprintf(stdout, "inode read no found! key:%lu \n", key);
         }
         thread->stats.FinishedOp(1, kBenchmarkReadType);
     }
 
     char msg[100];
-    snprintf(msg, sizeof(msg), "(%llu of %llu found)", found, nums);
+    snprintf(msg, sizeof(msg), "(%lu of %lu found)", found, nums);
     thread->stats.AddMessage(msg);
 }
 
@@ -604,7 +604,7 @@ void DirRandomDelete(ThreadState* thread){
 
         ret = thread->db->DirDelete(key, Slice(fname, FLAGS_value_size));
         if(ret != 0 && ret != 1 && ret != 2){
-            fprintf(stderr, "dir delete error!key:%llu fname:%.*s\n", key, FLAGS_value_size, fname);
+            fprintf(stderr, "dir delete error!key:%lu fname:%.*s\n", key, FLAGS_value_size, fname);
             fflush(stderr);
             exit(1);
         }
@@ -627,7 +627,7 @@ void InodeRandomDelete(ThreadState* thread){
 
         ret = thread->db->InodeDelete(key);
         if(ret != 0 && ret != 2){
-            fprintf(stderr, "inode delete error!key:%llu \n", key);
+            fprintf(stderr, "inode delete error!key:%lu \n", key);
             fflush(stderr);
             exit(1);
         }
@@ -654,7 +654,7 @@ void DirRandomUpdate(ThreadState* thread){
 
         ret = thread->db->DirPut(key, Slice(fname, FLAGS_value_size), value);
         if(ret != 0){
-            fprintf(stderr, "dir update error! key:%llu fname:%.*s value:%llu\n", key, FLAGS_value_size, fname, value);
+            fprintf(stderr, "dir update error! key:%lu fname:%.*s value:%lu\n", key, FLAGS_value_size, fname, value);
             fflush(stderr);
             exit(1);
         }
@@ -682,7 +682,7 @@ void InodeRandomUpdate(ThreadState* thread){
 
         ret = thread->db->InodePut(key, Slice(value, FLAGS_value_size));
         if(ret != 0){
-            fprintf(stderr, "inode Update error! key:%llu value:%.*s \n", key, FLAGS_value_size, value);
+            fprintf(stderr, "inode Update error! key:%lu value:%.*s \n", key, FLAGS_value_size, value);
             fflush(stderr);
             exit(1);
         }
@@ -720,7 +720,7 @@ void DirRandomRange(ThreadState* thread){
     }
 
     char msg[100];
-    snprintf(msg, sizeof(msg), "(%llu of %llu found)", found, nums);
+    snprintf(msg, sizeof(msg), "(%lu of %lu found)", found, nums);
     thread->stats.AddMessage(msg);
 }
 
