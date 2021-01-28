@@ -92,6 +92,7 @@ inline uint32_t DirHashTable::hash_id(const inode_id_t key, const uint64_t capac
 void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, LinkListOp &op){
     NvmHashEntry *entry = &(version->buckets_[index]);
     if(op.res != entry->root) {
+        DBG_LOG("version:%p entry:%u update new root:%lu old:%lu", version, index, op.res, entry->root);
         entry->SetRootPersist(op.res);
     }
     uint32_t add_linknode_num = op.add_linknode_list.size();
