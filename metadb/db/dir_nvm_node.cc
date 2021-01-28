@@ -464,7 +464,7 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
                 LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
                 prev_node->SetNextPersist(NODE_GET_OFFSET(res[0]));
             } else {
-                op.res = NODE_GET_OFFSET(res[0]);   //根节点替换
+                op.res = res[0];   //根节点替换
             }
             
             op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
@@ -561,10 +561,11 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
         if(!IS_INVALID_POINTER(cur->prev)){
             LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
             prev_node->SetNextPersist(NODE_GET_OFFSET(res[0]));
+        } else {
+            op.res = res[0];
         }
         
         op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
-        op.res = NODE_GET_OFFSET(res[0]);
 
         delete[] buf;
         return 0;
@@ -1333,7 +1334,7 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
                 LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
                 prev_node->SetNextPersist(NODE_GET_OFFSET(res[0]));
             } else {
-                op.res = NODE_GET_OFFSET(res[0]);   //根节点替换
+                op.res = res[0];   //根节点替换
             }
             
             op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
@@ -1418,10 +1419,11 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
         if(!IS_INVALID_POINTER(cur->prev)){
             LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
             prev_node->SetNextPersist(NODE_GET_OFFSET(res[0]));
+        } else {
+            op.res = res[0];
         }
         
         op.free_linknode_list.push_back(NODE_GET_OFFSET(cur));
-        op.res = NODE_GET_OFFSET(res[0]);
 
         delete[] buf;
         return 0;
@@ -1804,7 +1806,7 @@ int BptreeInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, cons
             return 0;
         }
         if(res.index_level == 0 ){ //根节点是叶节点，并且叶节点是根节点，则更新根节点
-            op.res = NODE_GET_OFFSET(ret[0]);
+            op.res = ret[0];
         }
         return 0;
     } else if(ret.size() == 2){  //叶节点分裂了，需要在index中插入
