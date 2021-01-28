@@ -1,6 +1,6 @@
 CC = gcc
 CXX = g++
-LDFLAGS = -pthread -g -Wformat=0 -lpmem
+LDFLAGS = -pthread -g -lpmem
 DEFS = 
 CFLAGS = -I./include
 CFLAGS += $(DEFS)

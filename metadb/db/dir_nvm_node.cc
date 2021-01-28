@@ -474,7 +474,7 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
         }
     }
 
-    uint32_t add_len = 8 + 4 + 4 + 8 + 4 + fname.size() + sizeof(inode_id_t);
+    uint32_t add_len = sizeof(inode_id_t) + 4 + 4 + 8 + 4 + fname.size() + sizeof(inode_id_t);
     if(cur->GetFreeSpace() >= add_len) { //空间足够，可以插入
         LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
         new_node->CopyBy(cur);

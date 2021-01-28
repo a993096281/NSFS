@@ -7,9 +7,13 @@
 
 #include "dir_db.h"
 
+
 namespace metadb {
 
 DirDB::DirDB(const Option &option) : option_(option) {
+    assert(sizeof(LinkNode) == DIR_LINK_NODE_SIZE);
+    assert(sizeof(BptreeIndexNode) == DIR_BPTREE_INDEX_NODE_SIZE);
+    assert(sizeof(BptreeLeafNode) == DIR_BPTREE_LEAF_NODE_SIZE);
     hashtable_ = new DirHashTable(option, 1, option_.DIR_FIRST_HASH_MAX_CAPACITY);
 }
 
