@@ -350,7 +350,6 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             assert(fname.size() == (res.value_len - sizeof(inode_id_t)));  //以防hash值不一样
             uint32_t offset = res.fname_offset + 8 + 4 + (res.value_len - sizeof(inode_id_t));
             cur->SetBufPersist(offset, &value, sizeof(inode_id_t));
-            op.res = NODE_GET_OFFSET(cur);
             return 0;
         }
         //pinode存在，fname不存在情况
