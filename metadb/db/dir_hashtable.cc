@@ -518,11 +518,16 @@ void DirHashTable::PrintHashTable(){
         return ;
     }
     HashVersion *version = version_;
-    DBG_LOG("dir hashtable verion: capacity:%lu node_num:%u", version->capacity_, version->node_num_.load());
+    DBG_LOG("dir hashtable verion:%p capacity:%lu node_num:%u", version, version->capacity_, version->node_num_.load());
     for(uint32_t i = 0; i < version->capacity_; i++){
         NvmHashEntry *entry = &(version->buckets_[i]);
-        DBG_LOG("dir hashtable hash entry:%u root:%u node_num:%u", i, entry->root, entry->node_num);
-        PrintLinkList(entry->root);
+        if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
+            DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
+            second_hash->PrintHashTable();
+        } else {
+            DBG_LOG("dir hashtable hash entry:%u root:%u node_num:%u", i, entry->root, entry->node_num);
+            PrintLinkList(entry->root);
+        }
     }
 }
 
