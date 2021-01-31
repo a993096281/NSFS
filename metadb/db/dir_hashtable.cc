@@ -131,7 +131,7 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, Lin
 
     if(hash_type_ == 2){  //有可能扩展
         if(NeedSecondHashDoRehash()){
-            DBG_LOG("dir second hash add rehash job, version:%p", version);
+            DBG_LOG("dir second hash add rehash job, version:%p node_num:%lu", version, verison->node_num_.load());
             thread_pool->Schedule(&DirHashTable::SecondHashDoRehashJob, this);
         }
     }
@@ -313,7 +313,7 @@ struct TranToSecondHashJob{
 
 void DirHashTable::AddHashEntryTranToSecondHashJob(HashVersion *version, uint32_t index){
     TranToSecondHashJob *job = new TranToSecondHashJob(this, version, index);
-    DBG_LOG("dir hash entry tran second hash add job, version:%p index:%u", version, index);
+    DBG_LOG("dir hash entry tran second hash add job, version:%p index:%u node_num:%u", version, index, version->buckets_[index].node_num.load());
     thread_pool->Schedule(&DirHashTable::HashEntryTranToSecondHashWork, job);   //添加后台任务
 }
 
@@ -479,7 +479,7 @@ void DirHashTable::MoveEntryToRehash(HashVersion *version, uint32_t index, HashV
     version->rwlock_[index].Unlock();
 
     for(auto it : free_list) {
-        node_allocator->Free(it, INODE_HASH_ENTRY_SIZE);
+        node_allocator->Free(it, DIR_LINK_NODE_SIZE);
     }
 }
 
@@ -522,10 +522,11 @@ void DirHashTable::PrintHashTable(){
     for(uint32_t i = 0; i < version->capacity_; i++){
         NvmHashEntry *entry = &(version->buckets_[i]);
         if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
+            DBG_LOG("dir hashtable hash version:%p entry:%u is second hash", version, i);
             DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
             second_hash->PrintHashTable();
         } else {
-            DBG_LOG("dir hashtable hash entry:%u root:%u node_num:%u", i, entry->root, entry->node_num);
+            DBG_LOG("dir hashtable hash version:%p entry:%u root:%u node_num:%u", version, i, entry->root, entry->node_num);
             PrintLinkList(entry->root);
         }
     }

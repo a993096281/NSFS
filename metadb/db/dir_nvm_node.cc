@@ -40,6 +40,11 @@ struct LinkNodeSearchResult {
 
 
 int LinkNodeSearch(LinkNodeSearchResult &res, LinkNode *cur, const inode_id_t key, const Slice &fname){
+    if(cur->num == 0 || cur->len == 0){
+        res.key_index = 0;
+        res.key_offset = 0;
+        return 1;
+    }
     if(compare_inode_id(key, cur->min_key) < 0) {
         res.key_index = 0;
         res.key_offset = 0;
@@ -472,8 +477,26 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             return 0;
         }
     }
-
+    //未找到，在节点内插入
     uint32_t add_len = sizeof(inode_id_t) + 4 + 4 + 8 + 4 + fname.size() + sizeof(inode_id_t);
+    if(cur->num == 0 || cur->len == 0){  //空节点，直接插入
+        char *buf = new char[add_len];
+        uint32_t insert_offset = 0;
+        MemoryEncodeKey(buf + insert_offset, key);
+        insert_offset += sizeof(inode_id_t);
+        MemoryEncodeKVnumKVlen(buf + insert_offset, 1, 8 + 4 + fname.size() + sizeof(inode_id_t));
+        insert_offset += 8;
+        MemoryEncodeFnameKey(buf + insert_offset, fname, value);
+        cur->SetBufNodrain(res.key_offset, buf, add_len); 
+        cur->SetMinkeyNodrain(key);
+        cur->SetMaxkeyNodrain(key);
+        cur->SetNumAndLenNodrain(1, add_len);
+        cur->Flush();
+
+        delete[] buf;
+        return 0;
+    }
+
     if(cur->GetFreeSpace() >= add_len) { //空间足够，可以插入
         LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
         new_node->CopyBy(cur);
@@ -1344,6 +1367,15 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
     }
     //key不存在，将kvs插入
     uint32_t add_len = kvs.size();
+    if(cur->num == 0 || cur->len == 0){  //空节点，直接插入
+        cur->SetBufNodrain(0, kvs.data(), add_len); 
+        cur->SetMinkeyNodrain(key);
+        cur->SetMaxkeyNodrain(key);
+        new_node->SetNumAndLenNodrain(1, add_len);
+        new_node->Flush();
+        return 0;
+    }
+
     if(cur->GetFreeSpace() >= add_len) { //空间足够，可以插入
         LinkNode *new_node = AllocLinkNode();   //超过8B修改都采用COW，copy on write
         new_node->CopyBy(cur);
