@@ -1371,8 +1371,8 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
         cur->SetBufNodrain(0, kvs.data(), add_len); 
         cur->SetMinkeyNodrain(key);
         cur->SetMaxkeyNodrain(key);
-        new_node->SetNumAndLenNodrain(1, add_len);
-        new_node->Flush();
+        cur->SetNumAndLenNodrain(1, add_len);
+        cur->Flush();
         return 0;
     }
 

@@ -11,7 +11,7 @@ static inline uint64_t Random64(uint32_t *seed){
 
 void DirRandomWrite(DB* db){
     uint32_t seed = 1000;
-    uint64_t nums = 20;
+    uint64_t nums = 1000;
 
     inode_id_t key;
     char *fname = new char[8 + 1];

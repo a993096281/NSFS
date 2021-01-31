@@ -131,7 +131,7 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, Lin
 
     if(hash_type_ == 2){  //有可能扩展
         if(NeedSecondHashDoRehash()){
-            DBG_LOG("dir second hash add rehash job, version:%p node_num:%lu", version, verison->node_num_.load());
+            DBG_LOG("dir second hash add rehash job, version:%p node_num:%lu", version, version->node_num_.load());
             thread_pool->Schedule(&DirHashTable::SecondHashDoRehashJob, this);
         }
     }
