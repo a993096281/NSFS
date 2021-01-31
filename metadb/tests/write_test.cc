@@ -22,9 +22,9 @@ void DirRandomWrite(DB* db){
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % nums;
-        key = id;
+        key = 1;
         value = id;
-        snprintf(fname, 8 + 1, "%0*llu", 8, id);
+        snprintf(fname, 8 + 1, "%0*llx", 8, id);
         DBG_LOG("put:%d key:%lu fname:%.*s value:%lx", i, key, 8, fname, value);
         ret = db->DirPut(key, Slice(fname, 8), value);
         if(ret != 0){
