@@ -141,12 +141,12 @@ int DirHashTable::HashEntryInsertKV(HashVersion *version, uint32_t index, const 
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
-
+    version->rwlock_[index].WriteLock();
     if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
         DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
+        version->rwlock_[index].Unlock();
         return second_hash->Put(key, fname, value);
     }
-    version->rwlock_[index].WriteLock();
 
     if(IS_INVALID_POINTER(root)) { 
         LinkNode *root_node = AllocLinkNode();
@@ -244,11 +244,12 @@ int DirHashTable::HashEntryDeleteKV(HashVersion *version, uint32_t index, const 
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
+    version->rwlock_[index].WriteLock();
     if(IS_SECOND_HASH_POINTER(root)) {  //二级hash
         DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
+        version->rwlock_[index].Unlock();
         return second_hash->Delete(key, fname);
     }
-    version->rwlock_[index].WriteLock();
     if(IS_INVALID_POINTER(root)) { 
         res = 2; //未找到
     } else {  //linklist
@@ -312,7 +313,7 @@ struct TranToSecondHashJob{
 
 void DirHashTable::AddHashEntryTranToSecondHashJob(HashVersion *version, uint32_t index){
     TranToSecondHashJob *job = new TranToSecondHashJob(this, version, index);
-    DBG_LOG("dir hash entry tran second hash, version:%p index:%u", version, index);
+    DBG_LOG("dir hash entry tran second hash add job, version:%p index:%u", version, index);
     thread_pool->Schedule(&DirHashTable::HashEntryTranToSecondHashWork, job);   //添加后台任务
 }
 
