@@ -25,9 +25,9 @@ namespace metadb {
 
 class InodeZone {   //一级hash的分区，包含一个hashtable存储key-offset，包含多个文件存储value
 public: 
-    InodeZone(const Option &option);
+    InodeZone(const Option &option, uint32_t zone_id);
     InodeZone() {}
-    void InitInodeZone(const Option &option);
+    void InitInodeZone(const Option &option, uint32_t zone_id);
     virtual ~InodeZone();
 
     virtual int InodePut(const inode_id_t key, const Slice &value);
@@ -36,7 +36,9 @@ public:
     virtual int InodeDelete(const inode_id_t key);
 
     int DeleteFlie(pointer_t value_addr);   ////在文件中删除该地址，标记无效kv的个数
+    uint32_t get_zone_id() { return zone_id_; }
 private: 
+    uint32_t zone_id_;
     Option option_;
     InodeHashTable *hashtable_;   //全部key-offset存储结构
 

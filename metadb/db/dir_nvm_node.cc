@@ -2544,21 +2544,21 @@ void PrintLinkList(pointer_t root){
         LinkNode *cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
         DBG_LOG("linknode:%lu num:%u len:%u min:%lu max:%lu prev:%lu next:%lu", cur, cur_node->num, \
             cur_node->len, cur_node->min_key, cur_node->max_key, cur_node->prev, cur_node->next);
-        // inode_id_t key;
-        // uint32_t key_num, key_len;
-        // uint32_t offset = 0;
-        // for(uint32_t i = 0; i < cur_node->num; i++){
-        //     cur_node->DecodeBufGetKeyNumLen(offset, key, key_num, key_len);
-        //     if(key_num == 0){
-        //         DBG_LOG("i:%u key:%lu btree:%lu", i, key, cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4));
-        //         offset += sizeof(inode_id_t) + 4 + 8;
-        //     } 
-        //     else {
-        //         string kvs = BufTranToHex(cur_node->buf + offset + sizeof(inode_id_t) + 8, key_len);
-        //         DBG_LOG("i:%u key:%lu key_num:%u key_len:%u kvs:%.*s", i, key, key_num, key_len, kvs.size(), kvs.c_str());
-        //         offset += sizeof(inode_id_t) + 8 + key_len;
-        //     }
-        // }
+        inode_id_t key;
+        uint32_t key_num, key_len;
+        uint32_t offset = 0;
+        for(uint32_t i = 0; i < cur_node->num; i++){
+            cur_node->DecodeBufGetKeyNumLen(offset, key, key_num, key_len);
+            if(key_num == 0){
+                DBG_LOG("i:%u key:%lu btree:%lu", i, key, cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4));
+                offset += sizeof(inode_id_t) + 4 + 8;
+            } 
+            else {
+                string kvs = BufTranToHex(cur_node->buf + offset + sizeof(inode_id_t) + 8, key_len);
+                DBG_LOG("i:%u key:%lu key_num:%u key_len:%u kvs:%.*s", i, key, key_num, key_len, kvs.size(), kvs.c_str());
+                offset += sizeof(inode_id_t) + 8 + key_len;
+            }
+        }
         cur = cur_node->next;
     }
 }

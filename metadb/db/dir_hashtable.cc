@@ -31,6 +31,7 @@ DirHashTable::DirHashTable(const Option &option, uint32_t hash_type, uint64_t ca
 
     //init
     version_ = new HashVersion(capacity);
+    DBG_LOG("dir create hashtable:%p version:%p capacity:%lu", this, version_, capacity);
     version_->Ref();
 }
 
@@ -375,8 +376,9 @@ void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
     pointer_t old_entry_root = SECOND_HASH_POINTER | NODE_GET_OFFSET(version->buckets_);
     entry->SetRootPersist(old_entry_root);
     entry->SetSecondHashPersist(second_hash);
-    DBG_LOG("dir do tran second hash end, version:%p index:%u old entry:%lx", job->version, job->index, old_entry_root);
+    DBG_LOG("dir do tran second hash end, hash:%p version:%p index:%u old entry:%lx", second_hash, job->version, job->index, old_entry_root);
     job->version->rwlock_[job->index].Unlock();
+    job->version->node_num_.fetch_sub(free_list.size());
 
     for(auto it : free_list){
         node_allocator->Free(it, DIR_LINK_NODE_SIZE);
@@ -476,6 +478,7 @@ void DirHashTable::MoveEntryToRehash(HashVersion *version, uint32_t index, HashV
         cur = cur_node->next;
     }
     entry->SetRootPersist(INVALID_POINTER);  //旧version的entry变为空
+    entry->SetNodeNumPersist(0);
     version->rwlock_[index].Unlock();
 
     for(auto it : free_list) {
@@ -522,8 +525,8 @@ void DirHashTable::PrintHashTable(){
     for(uint32_t i = 0; i < version->capacity_; i++){
         NvmHashEntry *entry = &(version->buckets_[i]);
         if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
-            DBG_LOG("dir hashtable hash version:%p entry:%u is second hash", version, i);
             DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
+            DBG_LOG("dir hashtable hash version:%p entry:%u is second hash:%p version:%p re_version:%p", version, i, second_hash, second_hash->version_, second_hash->rehash_version_);
             second_hash->PrintHashTable();
         } else {
             DBG_LOG("dir hashtable hash version:%p entry:%u root:%u node_num:%u", version, i, entry->root, entry->node_num);

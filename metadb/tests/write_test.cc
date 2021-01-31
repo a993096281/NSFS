@@ -32,8 +32,9 @@ void DirRandomWrite(DB* db){
             fflush(stderr);
             exit(1);
         }
-        db->PrintDir();
+        //db->PrintDir();
     }
+    db->PrintDir();
     delete fname;
 }
 

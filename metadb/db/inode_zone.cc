@@ -9,12 +9,13 @@
 
 namespace metadb {
 
-InodeZone::InodeZone(const Option &option) : option_(option) {
+InodeZone::InodeZone(const Option &option, uint32_t zone_id) : option_(option), zone_id_(zone_id) {
     write_file_ = nullptr;
     hashtable_ = new InodeHashTable(option, this);
 }
 
-void InodeZone::InitInodeZone(const Option &option){
+void InodeZone::InitInodeZone(const Option &option, uint32_t zone_id){
+    zone_id_ = zone_id;
     write_file_ = nullptr;
     option_ = option;
     hashtable_ = new InodeHashTable(option, this);

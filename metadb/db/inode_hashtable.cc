@@ -189,6 +189,7 @@ InodeHashTable::InodeHashTable(const Option &option, InodeZone *inode_zone) : op
     //init
     version_ = new InodeHashVersion(option_.INODE_HASHTABLE_INIT_SIZE);
     version_->Ref();
+    DBG_LOG("inode:%u create hashtable:%p version:%p capacity:%lu", inode_zone_->get_zone_id(), this, version_, option_.INODE_HASHTABLE_INIT_SIZE);
 }
 
 InodeHashTable::~InodeHashTable(){
