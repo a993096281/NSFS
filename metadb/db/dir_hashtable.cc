@@ -131,6 +131,7 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, Lin
 
     if(hash_type_ == 2){  //有可能扩展
         if(NeedSecondHashDoRehash()){
+            DBG_LOG("dir second hash add rehash job, version:%p", version);
             thread_pool->Schedule(&DirHashTable::SecondHashDoRehashJob, this);
         }
     }
@@ -311,6 +312,7 @@ struct TranToSecondHashJob{
 
 void DirHashTable::AddHashEntryTranToSecondHashJob(HashVersion *version, uint32_t index){
     TranToSecondHashJob *job = new TranToSecondHashJob(this, version, index);
+    DBG_LOG("dir hash entry tran second hash, version:%p index:%u", version, index);
     thread_pool->Schedule(&DirHashTable::HashEntryTranToSecondHashWork, job);   //添加后台任务
 }
 
@@ -323,6 +325,7 @@ void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
         delete job;
         return ;
     }
+    DBG_LOG("dir do tran second hash start, version:%p index:%u", job->version, job->index);
     uint64_t second_hash_capacity = job->hashtable->option_.DIR_SECOND_HASH_INIT_SIZE;
     DirHashTable *second_hash = new DirHashTable(job->hashtable->option_, 2, second_hash_capacity);
     
@@ -362,6 +365,7 @@ void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
     HashVersion *version = second_hash->version_;
     for(uint32_t i = 0; i < second_hash_capacity; i++){
         if(!buckets[i].empty()){
+            DBG_LOG("dir do tran second hash, version:%p index:%u second entry:%u", job->version, job->index, i);
             MemoryTranToNVMLinkNode(buckets[i], root, nodes_num);
             version->buckets_[i].SetRootPersist(root);
             version->buckets_[i].SetNodeNumPersist(nodes_num);
@@ -370,6 +374,7 @@ void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
     pointer_t old_entry_root = SECOND_HASH_POINTER | NODE_GET_OFFSET(version->buckets_);
     entry->SetRootPersist(old_entry_root);
     entry->SetSecondHashPersist(second_hash);
+    DBG_LOG("dir do tran second hash end, version:%p index:%u old entry:%lx", job->version, job->index, old_entry_root);
     job->version->rwlock_[job->index].Unlock();
 
     for(auto it : free_list){
@@ -393,12 +398,14 @@ void DirHashTable::SecondHashDoRehashWork(){
     rehash_version_->Ref();
     is_rehash_ = true;
     version_lock_.Unlock();
-
+    DBG_LOG("dir second hash rehash start, version:%p rehash_version:%p", version_, rehash_version_);
     //开始逐步迁移数据到rehash_version_中
     for(uint32_t index = 0; index < version_->capacity_; index++){
+        DBG_LOG("dir second hash rehash doing, version:%p rehash_version:%p index:%u", version_, rehash_version_, index);
         MoveEntryToRehash(version_, index, rehash_version_);
     }
     //迁移完
+    DBG_LOG("dir second hash rehash end, version:%p rehash_version:%p", version_, rehash_version_);
     version_lock_.Lock();
     HashVersion *old_version = version_;
     version_ = rehash_version_;
