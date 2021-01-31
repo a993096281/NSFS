@@ -313,7 +313,7 @@ struct TranToSecondHashJob{
 
 void DirHashTable::AddHashEntryTranToSecondHashJob(HashVersion *version, uint32_t index){
     TranToSecondHashJob *job = new TranToSecondHashJob(this, version, index);
-    DBG_LOG("dir hash entry tran second hash add job, version:%p index:%u node_num:%u", version, index, version->buckets_[index].node_num.load());
+    DBG_LOG("dir hash entry tran second hash add job, version:%p index:%u node_num:%u", version, index, version->buckets_[index].node_num);
     thread_pool->Schedule(&DirHashTable::HashEntryTranToSecondHashWork, job);   //添加后台任务
 }
 
