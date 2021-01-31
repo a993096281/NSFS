@@ -12,7 +12,7 @@ namespace metadb {
 InodeDB::InodeDB(const Option &option, uint64_t capacity) : option_(option), capacity_(capacity){
     zones_ = new InodeZone[capacity_];
     for(uint32_t i = 0; i < capacity; i++){
-        zones_[i].InitInodeZone(option);
+        zones_[i].InitInodeZone(option, i);
     }
 }
 
