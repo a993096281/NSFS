@@ -138,10 +138,10 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, Lin
 }
 
 int DirHashTable::HashEntryInsertKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, const inode_id_t &value){
+    version->rwlock_[index].WriteLock();
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
-    version->rwlock_[index].WriteLock();
     if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
         DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
         version->rwlock_[index].Unlock();
@@ -241,10 +241,10 @@ int DirHashTable::Get(const inode_id_t key, const Slice &fname, inode_id_t &valu
 }
 
 int DirHashTable::HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname){
+    version->rwlock_[index].WriteLock();
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
-    version->rwlock_[index].WriteLock();
     if(IS_SECOND_HASH_POINTER(root)) {  //二级hash
         DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
         version->rwlock_[index].Unlock();
@@ -319,8 +319,8 @@ void DirHashTable::AddHashEntryTranToSecondHashJob(HashVersion *version, uint32_
 
 void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
     TranToSecondHashJob *job = static_cast<TranToSecondHashJob *>(arg);
-    NvmHashEntry *entry = &(job->version->buckets_[job->index]);
     job->version->rwlock_[job->index].WriteLock();
+    NvmHashEntry *entry = &(job->version->buckets_[job->index]);
     if(IS_SECOND_HASH_POINTER(entry->root) || entry->node_num < job->hashtable->option_.DIR_LINKNODE_TRAN_SECOND_HASH_NUM) {   //可能被转了
         job->version->rwlock_[job->index].Unlock();
         delete job;
@@ -421,10 +421,10 @@ void DirHashTable::SecondHashDoRehashWork(){
 
 //rehash时迁移kvs；
 int DirHashTable::RehashInsertKvs(HashVersion *version, uint32_t index, const inode_id_t key, string &kvs){
+    version->rwlock_[index].WriteLock();
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
-    version->rwlock_[index].WriteLock();
 
     if(IS_INVALID_POINTER(root)) { 
         LinkNode *root_node = AllocLinkNode();

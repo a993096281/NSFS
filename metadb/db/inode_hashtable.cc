@@ -320,7 +320,7 @@ int InodeHashTable::HashEntryDeleteKV(InodeHashVersion *version, uint32_t index,
     op.res = entry->root;
     int res = InodeHashEntryLinkDelete(op, key, value);
     if(res == 0) HashEntryDealWithOp(version, index, op);
-    version->rwlock_[index].WriteLock();
+    version->rwlock_[index].Unlock();
     return res;
 }
 
