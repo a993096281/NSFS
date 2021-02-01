@@ -184,23 +184,19 @@ int DirHashTable::Put(const inode_id_t key, const Slice &fname, const inode_id_t
 }
 
 int DirHashTable::HashEntryGetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value){
-    version->rwlock_[index].ReadLock();
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
     if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
         DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
-        version->rwlock_[index].Unlock();
         return second_hash->Get(key, fname, value);
     }
      //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点是一个问题，延时删除可行或引用计数，
     //暂时简单处理，由于空间分配是往后分配，提前删除没有影响；
     if(IS_INVALID_POINTER(root)) { 
-        version->rwlock_[index].Unlock();
         return 2; //未找到
     } else {  //linklist
         LinkNode *root_node = static_cast<LinkNode *>(NODE_GET_POINTER(root));
-        version->rwlock_[index].Unlock();
         return LinkListGet(root_node, key, fname, value);
     }
     return 0;
@@ -229,20 +225,27 @@ int DirHashTable::Get(const inode_id_t key, const Slice &fname, inode_id_t &valu
     HashVersion *version;
     HashVersion *rehash_version;
     GetVersionAndRefByRead(is_rehash, &version, &rehash_version);
-    if(is_rehash){  //正在rehash，先在rehash_version查找，再查找version
-        uint32_t index = hash_id(key, rehash_version->capacity_);
-        
-        int res = HashEntryGetKV(rehash_version, index, key, fname, value);
-        
-        rehash_version->Unref();
-        if(res == 0) return res;   //res == 0,意味着找到
-    }
-    uint32_t index = hash_id(key, version->capacity_);
-    
-    int res = HashEntryGetKV(version, index, key, fname, value);
-    
+
+    inode_id_t value1;
+    uint32_t index1 = hash_id(key, version->capacity_);
+    int res1 = HashEntryGetKV(version, index1, key, fname, value1);
     version->Unref();
-    return res;   //
+
+    //两个版本都查找，如果rehash版本找到，则优先返回rehash版本；
+    if(is_rehash){  //正在rehash，rehash_version也要查找，
+        inode_id_t value2;
+        uint32_t index2 = hash_id(key, rehash_version->capacity_);
+        int res2 = HashEntryGetKV(rehash_version, index2, key, fname, value2);
+        rehash_version->Unref();
+        if(res2 == 0){  //res == 0,意味着找到
+            value = value2;
+            return res2;
+        } 
+    }
+    if(res1 == 0){
+        value = value1;
+    }
+    return res1;   //
 }
 
 int DirHashTable::HashEntryDeleteKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname){
@@ -409,9 +412,9 @@ void DirHashTable::SecondHashDoRehashWork(){
     //开始逐步迁移数据到rehash_version_中
     for(uint32_t index = 0; index < version_->capacity_; index++){
         DBG_LOG("dir second hash rehash doing, version:%p rehash_version:%p index:%u", version_, rehash_version_, index);
-        PrintVersion(version_);
+        //PrintVersion(version_);
         MoveEntryToRehash(version_, index, rehash_version_);
-        PrintVersion(rehash_version_);
+        //PrintVersion(rehash_version_);
 
     }
     //迁移完

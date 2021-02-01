@@ -342,20 +342,27 @@ int InodeHashTable::Get(const inode_id_t key, pointer_t &value){
     InodeHashVersion *version;
     InodeHashVersion *rehash_version;
     GetVersionAndRef(is_rehash, &version, &rehash_version);
-    if(is_rehash){  //正在rehash，先在rehash_version查找，再查找version
-        uint32_t index = hash_id(key, rehash_version->capacity_);
-        
-        int res = HashEntryGetKV(rehash_version, index, key, value);
-        
-        rehash_version->Unref();
-        if(res == 0) return res;   //res == 0,意味着找到
-    }
-    uint32_t index = hash_id(key, version->capacity_);
-    
-    int res = HashEntryGetKV(version, index, key, value);
-    
+
+    pointer_t value1;
+    uint32_t index1 = hash_id(key, version->capacity_);
+    int res1 = HashEntryGetKV(version, index1, key, value1);
     version->Unref();
-    return res;   //
+    
+    //两个版本都查找，如果rehash版本找到，则优先返回rehash版本；
+    if(is_rehash){  //正在rehash，在rehash_version也查找
+        pointer_t value2;
+        uint32_t index2 = hash_id(key, rehash_version->capacity_);
+        int res2 = HashEntryGetKV(rehash_version, index2, key, value2);
+        rehash_version->Unref();
+        if(res2 == 0) {  //res == 0,意味着找到
+            value = value2;
+            return res2;
+        }
+    }
+    if(res1 == 0){
+        value = value1;
+    }
+    return res1;   
 }
 
 int InodeHashTable::Update(const inode_id_t key, const pointer_t new_value, pointer_t &old_value){
