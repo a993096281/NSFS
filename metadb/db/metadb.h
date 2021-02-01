@@ -29,6 +29,8 @@ public:
     virtual int InodeGet(const inode_id_t key, std::string &value);
     virtual int InodeDelete(const inode_id_t key);
 
+    virtual void WaitForBGJob();
+
 
     virtual void PrintDir();
 private:

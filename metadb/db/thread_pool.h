@@ -29,6 +29,7 @@ struct TaskItem{
 class ThreadPool {
 public:
     ThreadPool(uint32_t count) : thread_count_(count), cv_(&mu_) {
+        no_doing_thread_count_ = 0;
         shutdown_ = false;
         threads_.reserve(count);
         threads_.insert(threads_.begin(), count, 0);
@@ -56,7 +57,9 @@ public:
         while (true){
             mu_.Lock();
             while (deque_.empty() && (!shutdown_)){
+                no_doing_thread_count_++;
                 cv_.Wait();
+                no_doing_thread_count_--;
             }
             if(shutdown_){
                 mu_.Unlock();
@@ -96,6 +99,18 @@ public:
         return t;
     }
 
+    void WaitForBGJob(){  //等待后台任务完成
+        while(true){
+            mu_.Lock();
+            if(deque_.empty() && no_doing_thread_count_ == thread_count_){
+                mu_.Unlock();
+                break;
+            }
+            mu_.Unlock();
+            sleep(2);
+        }
+    }
+
 
 private:
     Mutex mu_;
@@ -104,6 +119,7 @@ private:
     vector<pthread_t> threads_;
     uint32_t thread_count_;
     bool shutdown_;
+    uint32_t no_doing_thread_count_;
 };
 
 extern ThreadPool *thread_pool;

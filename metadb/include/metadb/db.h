@@ -33,6 +33,8 @@ public:
     virtual int InodeGet(const inode_id_t key, std::string &value) = 0;
     virtual int InodeDelete(const inode_id_t key) = 0;
 
+
+    virtual void WaitForBGJob() = 0;
     ///统计
     virtual void PrintDir() = 0;
 };

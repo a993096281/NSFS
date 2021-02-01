@@ -184,19 +184,23 @@ int DirHashTable::Put(const inode_id_t key, const Slice &fname, const inode_id_t
 }
 
 int DirHashTable::HashEntryGetKV(HashVersion *version, uint32_t index, const inode_id_t key, const Slice &fname, inode_id_t &value){
+    version->rwlock_[index].ReadLock();
     NvmHashEntry *entry = &(version->buckets_[index]);
     pointer_t root = entry->root;
     int res = -1;
     if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
         DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
+        version->rwlock_[index].Unlock();
         return second_hash->Get(key, fname, value);
     }
      //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点是一个问题，延时删除可行或引用计数，
     //暂时简单处理，由于空间分配是往后分配，提前删除没有影响；
     if(IS_INVALID_POINTER(root)) { 
+        version->rwlock_[index].Unlock();
         return 2; //未找到
     } else {  //linklist
         LinkNode *root_node = static_cast<LinkNode *>(NODE_GET_POINTER(root));
+        version->rwlock_[index].Unlock();
         return LinkListGet(root_node, key, fname, value);
     }
     return 0;
@@ -515,24 +519,29 @@ Iterator* DirHashTable::DirHashTableGetIterator(const inode_id_t target){
         return (rehash_version != nullptr) ? rehash_it : vesion_it;   //
 }
 
+void DirHashTable::PrintVersion(HashVersion *version){
+    if(version == nullptr) return ;
+    DBG_LOG("dir hashtable verion:%p capacity:%lu node_num:%u", version, version->capacity_, version->node_num_.load());
+    for(uint32_t i = 0; i < version->capacity_; i++){
+    NvmHashEntry *entry = &(version->buckets_[i]);
+    if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
+        DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
+        DBG_LOG("dir hashtable hash version:%p entry:%u is second hash:%p version:%p re_version:%p", version, i, second_hash, second_hash->version_, second_hash->rehash_version_);
+        second_hash->PrintHashTable();
+    } else {
+        DBG_LOG("dir hashtable hash version:%p entry:%u root:%u node_num:%u", version, i, entry->root, entry->node_num);
+        PrintLinkList(entry->root);
+    }
+}
+
 void DirHashTable::PrintHashTable(){
+    DBG_LOG("dir hashtable print! hashtable:%p", this);
     if(version_ == nullptr) {
         DBG_LOG("dir hashtable verison is nullptr");
         return ;
     }
-    HashVersion *version = version_;
-    DBG_LOG("dir hashtable verion:%p capacity:%lu node_num:%u", version, version->capacity_, version->node_num_.load());
-    for(uint32_t i = 0; i < version->capacity_; i++){
-        NvmHashEntry *entry = &(version->buckets_[i]);
-        if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
-            DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
-            DBG_LOG("dir hashtable hash version:%p entry:%u is second hash:%p version:%p re_version:%p", version, i, second_hash, second_hash->version_, second_hash->rehash_version_);
-            second_hash->PrintHashTable();
-        } else {
-            DBG_LOG("dir hashtable hash version:%p entry:%u root:%u node_num:%u", version, i, entry->root, entry->node_num);
-            PrintLinkList(entry->root);
-        }
-    }
+    PrintVersion(version_);
+    PrintVersion(rehash_version_);
 }
 
 

@@ -65,6 +65,10 @@ int MetaDB::InodeDelete(const inode_id_t key){
     return inode_db_->InodeDelete(key);
 }
 
+void MetaDB::WaitForBGJob(){
+    if(thread_pool)  thread_pool->WaitForBGJob();
+}
+
 void MetaDB::PrintDir(){
     dir_db_->PrintDir();
 }
