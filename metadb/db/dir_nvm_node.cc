@@ -2568,18 +2568,18 @@ void printBptree(pointer_t root){
                     str.append(buf, strlen(buf));
                     queues.push(cur_node->entry[j].pointer);
                 }
-                DBG_LOG("level:%u %u index node:%lu num:%u value:%s", level, i, cur, cur_node->num, str.c_str());
+                DBG_LOG("level:%u %3u index node:%6lu num:%u value:%s", level, i, cur, cur_node->num, str.c_str());
             }
             else{    //叶子节点查找
                 BptreeLeafNode *cur_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(cur));
-                DBG_LOG("level:%u %u leaf node:%lu num:%u len:%u prev:%lu next:%lu", level, i, cur, cur_node->num, \
+                DBG_LOG("level:%u %3u leaf node:%6lu num:%u len:%u prev:%lu next:%lu", level, i, cur, cur_node->num, \
                     cur_node->len, cur_node->prev, cur_node->next);
                 uint64_t temp_key;
                 uint32_t len;
                 uint32_t offset = 0;
                 for(uint32_t j = 0; j < cur_node->num; j++){
                     cur_node->DecodeBufGetKeyValuelen(offset, temp_key, len);
-                    DBG_LOG("level:%u %u leaf node:%lu %u key:%lx len:%u value:%.*s", level, i, cur, j, temp_key, len, len, cur_node->buf + offset + 8 + 4);
+                    DBG_LOG("level:%u %3u leaf node:%6lu %02u key:%016lx len:%u value:%.*s", level, i, cur, j, temp_key, len, len - sizeof(inode_id_t), cur_node->buf + offset + 8 + 4);
                     offset += (8 + 4 + len);
                 }
             }
