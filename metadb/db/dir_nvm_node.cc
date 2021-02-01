@@ -1690,6 +1690,10 @@ int BptreeLeafNodeInsert(BptreeOp &op, BptreeSearchResult &res, BptreeLeafNode *
     if(cur->GetFreeSpace() >= add_len){  //一个节点能够存下
         BptreeLeafNode *new_node = AllocBptreeLeafNode();
         new_node->CopyBy(cur);
+        uint32_t need_move = cur->len - res.leaf_key_offset;
+        if(need_move){
+            new_node->SetBufNodrain(res.leaf_key_offset + add_len, new_node->buf + res.leaf_key_offset, need_move);
+        }
         char *buf = new char[add_len];
         MemoryEncodeHashkeyLenFnameValue(buf, hash_key, fname, value);
         new_node->SetBufNodrain(res.leaf_key_offset, buf, add_len);
