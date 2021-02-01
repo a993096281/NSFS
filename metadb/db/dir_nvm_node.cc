@@ -1899,7 +1899,7 @@ int BptreeInsert(BptreeOp &op, const uint64_t hash_key, const Slice &fname, cons
                         uint64_t left_node_min_key = BptreeNodeGetMinkey(add_node[0]);
                         root->SetEntryNodrainByIndex(0, left_node_min_key, add_node[0]);
                         uint64_t right_node_min_key = BptreeNodeGetMinkey(add_node[1]);;
-                        root->SetEntryNodrainByIndex(1, right_node_min_key, ret[1]);
+                        root->SetEntryNodrainByIndex(1, right_node_min_key, add_node[1]);
                         root->Flush();
 
                         op.add_indexnode_list.push_back(NODE_GET_OFFSET(root));
