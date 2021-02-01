@@ -1541,12 +1541,12 @@ bool BanirySearchIndex(BptreeIndexNode *cur, const uint64_t hash_key, uint32_t &
     uint32_t right = max;
     uint32_t mid;
     while(left < right){
-        mid = (left + right) / 2;
-        if(hash_key > cur->entry[mid].key){
-            left = mid + 1;
+        mid = (left + right + 1) / 2;
+        if(hash_key >= cur->entry[mid].key){
+            left = mid;
         }
         else {
-            right = mid;
+            right = mid - 1;
         }
     }
 
