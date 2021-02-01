@@ -409,7 +409,10 @@ void DirHashTable::SecondHashDoRehashWork(){
     //开始逐步迁移数据到rehash_version_中
     for(uint32_t index = 0; index < version_->capacity_; index++){
         DBG_LOG("dir second hash rehash doing, version:%p rehash_version:%p index:%u", version_, rehash_version_, index);
+        PrintVersion(version_);
         MoveEntryToRehash(version_, index, rehash_version_);
+        PrintVersion(rehash_version_);
+
     }
     //迁移完
     DBG_LOG("dir second hash rehash end, version:%p rehash_version:%p", version_, rehash_version_);
