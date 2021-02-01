@@ -523,14 +523,15 @@ void DirHashTable::PrintVersion(HashVersion *version){
     if(version == nullptr) return ;
     DBG_LOG("dir hashtable verion:%p capacity:%lu node_num:%u", version, version->capacity_, version->node_num_.load());
     for(uint32_t i = 0; i < version->capacity_; i++){
-    NvmHashEntry *entry = &(version->buckets_[i]);
-    if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
-        DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
-        DBG_LOG("dir hashtable hash version:%p entry:%u is second hash:%p version:%p re_version:%p", version, i, second_hash, second_hash->version_, second_hash->rehash_version_);
-        second_hash->PrintHashTable();
-    } else {
-        DBG_LOG("dir hashtable hash version:%p entry:%u root:%u node_num:%u", version, i, entry->root, entry->node_num);
-        PrintLinkList(entry->root);
+        NvmHashEntry *entry = &(version->buckets_[i]);
+        if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
+            DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
+            DBG_LOG("dir hashtable hash version:%p entry:%u is second hash:%p version:%p re_version:%p", version, i, second_hash, second_hash->version_, second_hash->rehash_version_);
+            second_hash->PrintHashTable();
+        } else {
+            DBG_LOG("dir hashtable hash version:%p entry:%u root:%u node_num:%u", version, i, entry->root, entry->node_num);
+            PrintLinkList(entry->root);
+        }
     }
 }
 
