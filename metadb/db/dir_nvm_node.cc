@@ -1793,7 +1793,7 @@ int BptreeIndexNodeInsert(BptreeOp &op, pointer_t cur, uint32_t index, bool need
         memcpy(entrys, cur_node->entry, cur_node->num * sizeof(IndexNodeEntry));
         uint32_t need_move = cur_node->num - 1 - index;
         if(need_move > 0){
-            memmove(entrys[index + 2], &(entrys[index + 1]), need_move * sizeof(IndexNodeEntry));
+            memmove(&(entrys[index + 2]), &(entrys[index + 1]), need_move * sizeof(IndexNodeEntry));
         }
         entrys[index].pointer = ret[0];
         if(need_update_min_key){
