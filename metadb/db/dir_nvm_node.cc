@@ -1129,7 +1129,6 @@ int LinkKVSMerge(const string &now_kvs, const string &rehash_kvs, string &new_kv
 //将整棵Bptree的节点加入bop的free链中，层序遍历
 void AddBptreeNodeToBop(pointer_t root, BptreeOp &op){
     pointer_t cur = root;
-    uint32_t index = 0;
     queue<pointer_t> queues;
     queues.push(cur);
     while(!queues.empty() && !IS_INVALID_POINTER(queues.front())){
@@ -2536,6 +2535,50 @@ string BufTranToHex(const char *buf, uint32_t len){  //将buf转成数字16进�
     }
     return res;
 }
+void printBptree(pointer_t root){
+    if(IS_INVALID_POINTER(root)) return;
+    DBG_LOG("Bptree: root:%lu", root);
+    pointer_t cur = root;
+    uint32_t level = 0;
+    uint32_t size = 0;
+    queue<pointer_t> queues;
+    queues.push(cur);
+    while(!queues.empty() && !IS_INVALID_POINTER(queues.front())){
+        size = queues.size();
+        DBG_LOG("level:%u size:%u", level, size);
+        for(uint32_t i = 0; i < size; i++){
+            cur = queues.front();
+            if(IsIndexNode(cur)){  //中间节点查找
+                BptreeIndexNode *cur_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(cur));
+                string str;
+                char buf[100];
+                for(uint32_t j = 0; j < cur_node->num; j++){
+                    snprintf(buf, 100, "[%u %lx %lu]", j, cur_node->entry[j].key, cur_node->entry[j].pointer);
+                    str.append(buf, strlen(buf));
+                    queues.push(cur_node->entry[j].pointer);
+                }
+                DBG_LOG("level:%u %u index node:%lu num:%u value:%s", level, i, cur, cur_node->num, str.c_str());
+            }
+            else{    //叶子节点查找
+                BptreeLeafNode *cur_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(cur));
+                DBG_LOG("level:%u %u leaf node:%lu num:%u len:%u prev:%lu next:%lu", level, i, cur, cur_node->num, \
+                    cur_node->len, cur_node->prev, cur_node->next);
+                uint64_t temp_key;
+                uint32_t len;
+                uint32_t offset = 0;
+                for(uint32_t j = 0; j < cur_node->num; j++){
+                    cur_node->DecodeBufGetKeyValuelen(offset, temp_key, len);
+                    DBG_LOG("level:%u %u leaf node:%lu %u key:%lu len:%u value:%.*s", level, i, cur, j, temp_key, len, len, cur_node->buf + offset + 8 + 4);
+                    offset += (8 + 4 + len);
+                }
+            }
+            queues.pop();
+        }
+        level++;
+    }
+
+}
+
 void PrintLinkList(pointer_t root){
     if(IS_INVALID_POINTER(root)) return;
     pointer_t cur = root;
@@ -2551,6 +2594,8 @@ void PrintLinkList(pointer_t root){
             cur_node->DecodeBufGetKeyNumLen(offset, key, key_num, key_len);
             if(key_num == 0){
                 DBG_LOG("i:%u key:%lu btree:%lu", i, key, cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4));
+                pointer_t bptree = cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4);
+                printBptree(bptree);
                 offset += sizeof(inode_id_t) + 4 + 8;
             } 
             else {
