@@ -25,7 +25,7 @@ void DirRandomWrite(DB* db){
         key = 1;
         value = id;
         snprintf(fname, 8 + 1, "%0*llx", 8, id);
-        DBG_LOG("put:%d key:%lu fname:%.*s value:%lx", i, key, 8, fname, value);
+        DBG_LOG("put:%d key:%lu fname:%.*s value:%lx hash_fname:%lx", i, key, 8, fname, value, MurmurHash64(fname, 8));
         ret = db->DirPut(key, Slice(fname, 8), value);
         if(ret != 0){
             fprintf(stderr, "dir put error! key:%lu fname:%.*s value:%llx\n", key, 8, fname, value);
