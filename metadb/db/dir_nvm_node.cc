@@ -1751,6 +1751,7 @@ int BptreeLeafNodeInsert(BptreeOp &op, BptreeSearchResult &res, BptreeLeafNode *
 
 //特定函数，在中间节点的index处插入两个分裂的子节点，操作过程产生的新节点存在add中
 int BptreeIndexNodeInsert(BptreeOp &op, pointer_t cur, uint32_t index, bool need_update_min_key, vector<pointer_t> &ret, vector<pointer_t> &add){
+    assert(ret.size() == 2);
     BptreeIndexNode *cur_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(cur));
     if((cur_node->num + ret.size() - 1) <= INDEX_NODE_CAPACITY){  //一个节点能存下
         if(cur_node->num - 1 == index){  //在中间节点最后面加入，可在原节点修改
@@ -1786,13 +1787,13 @@ int BptreeIndexNodeInsert(BptreeOp &op, pointer_t cur, uint32_t index, bool need
             return 0;
         }
     } else {
-        //分裂
+        //分裂,
         uint32_t entry_num = cur_node->num + ret.size() - 1;
         IndexNodeEntry *entrys = new IndexNodeEntry[entry_num];
         memcpy(entrys, cur_node->entry, cur_node->num * sizeof(IndexNodeEntry));
         uint32_t need_move = cur_node->num - 1 - index;
         if(need_move > 0){
-            memmove(entrys, &(entrys[index + 1]), need_move * sizeof(IndexNodeEntry));
+            memmove(entrys[index + 2], &(entrys[index + 1]), need_move * sizeof(IndexNodeEntry));
         }
         entrys[index].pointer = ret[0];
         if(need_update_min_key){
