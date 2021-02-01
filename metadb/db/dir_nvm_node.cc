@@ -390,15 +390,15 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             delete[] buf;
             return 0;
         } else {
-            if((8 + 4 + 4 + res.key_len + add_len) > LINK_NODE_CAPACITY){  //同pinode_id聚齐的kv大于一个LinkNode Size，转成B+tree;
+            if((sizeof(inode_id_t) + 4 + 4 + res.key_len + add_len) > LINK_NODE_CAPACITY){  //同pinode_id聚齐的kv大于一个LinkNode Size，转成B+tree;
                 uint32_t need_len = res.key_len + add_len;
                 assert(need_len <= LEAF_NODE_CAPACITY);
                 BptreeLeafNode *root = AllocBptreeLeafNode();
-                root->SetBufNodrain(0, cur->buf + res.key_offset + 8 + 4 + 4, res.key_len);
-                uint32_t insert_offset = res.fname_offset - res.key_offset - 8 - 4 - 4;
+                root->SetBufNodrain(0, cur->buf + res.key_offset + sizeof(inode_id_t) + 4 + 4, res.key_len);
+                uint32_t insert_offset = res.fname_offset - res.key_offset - sizeof(inode_id_t) - 4 - 4;
                 uint32_t need_move = res.key_len - insert_offset;
                 if(need_move > 0) {
-                    root->SetBufNodrain(insert_offset + add_len, root->buf + insert_offset, add_len);
+                    root->SetBufNodrain(insert_offset + add_len, root->buf + insert_offset, need_move);
                 }
                 char *buf = new char[add_len];
                 MemoryEncodeHashkeyLenFnameValue(buf, MurmurHash64(fname.data(), fname.size()), fname, value);
