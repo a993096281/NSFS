@@ -480,6 +480,7 @@ void DirHashTable::MoveEntryToRehash(HashVersion *version, uint32_t index, HashV
             kvs.assign(cur_node->buf + offset, kv_len);
             key_index = hash_id(key, rehash_version->capacity_);
             res = RehashInsertKvs(rehash_version, key_index, key, kvs);  //这个插入超麻烦
+            offset += kv_len;
         }
         free_list.push_back(cur);
         cur = cur_node->next;
