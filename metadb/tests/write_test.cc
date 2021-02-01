@@ -73,6 +73,31 @@ void DirRandomRead(DB* db){
     printf("(%lu of %lu found)", found, nums);
 }
 
+void DirRandomDelete(DB* db){
+    uint32_t seed = 1000;
+    uint64_t nums = 1000;
+
+    inode_id_t key;
+    char *fname = new char[8 + 1]; 
+    uint64_t id = 0;
+    int ret = 0;
+    for(int i = 0; i < nums; i++){
+        //id = Random64(&seed);
+        id = Random64(&seed) % nums;
+        key = id;
+        snprintf(fname, 8 + 1, "%0*llx", 8, id);
+
+        ret = db->DirDelete(key, Slice(fname, 8));
+        if(ret != 0 && ret != 1 && ret != 2){
+            fprintf(stderr, "dir delete error!key:%lu fname:%.*s\n", key, 8, fname);
+            fflush(stderr);
+            exit(1);
+        }
+    }
+    db->PrintDir();
+    delete fname;
+}
+
 int main(int argc, char *argv[])
 {
     DB *db;
@@ -87,6 +112,7 @@ int main(int argc, char *argv[])
 
     DirRandomWrite(db);
     DirRandomRead(db);
+    DirRandomDelete(db);
 
     delete db;
     return 0;
