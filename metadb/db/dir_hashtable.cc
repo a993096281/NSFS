@@ -207,7 +207,8 @@ Iterator *DirHashTable::HashEntryGetIterator(HashVersion *version, uint32_t inde
     pointer_t root = entry->root;
     int res = -1;
     if(IS_SECOND_HASH_POINTER(root)) {   //二级hash
-        return nullptr;
+        DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
+        return second_hash->DirHashTableGetIterator(target);
     }
      //可以不加读锁，因为都是MVCC控制，但是不加锁，什么时候删除垃圾节点是一个问题，延时删除可行或引用计数，
     //暂时简单处理，由于空间分配是往后分配，提前删除没有影响；
