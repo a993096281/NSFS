@@ -104,7 +104,7 @@ int InodeHashEntryLinkInsert(InodeHashEntryLinkOp &op, const inode_id_t key, con
     uint16_t index;
     FindFreeSpaceOrCreatEntry(op, insert, index);
     NvmInodeHashEntryNode *insert_node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(insert));
-    insert_node->SetEntryPointerPersist(index, value);
+    insert_node->SetEntryPersistByIndex(index, key,value);
     uint16_t slot = slot_set_index(insert_node->slot, index);
     insert_node->SetNumAndSlotPersist(insert_node->num + 1, slot);
     return 0;
@@ -120,7 +120,7 @@ int InodeHashEntryLinkOnlyInsert(InodeHashEntryLinkOp &op, const inode_id_t key,
     uint16_t index;
     FindFreeSpaceOrCreatEntry(op, insert, index);
     NvmInodeHashEntryNode *insert_node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(insert));
-    insert_node->SetEntryPointerPersist(index, value);
+    insert_node->SetEntryPersistByIndex(index, key, value);
     uint16_t slot = slot_set_index(insert_node->slot, index);
     insert_node->SetNumAndSlotPersist(insert_node->num + 1, slot);
     return 0;
@@ -475,7 +475,7 @@ void InodeHashTable::MoveEntryToRehash(InodeHashVersion *version, uint32_t index
 string PrintSlot(uint16_t slot, uint16_t num){
     string res;
     for(uint16_t i = 0; i < num; i++){
-        res.push_back('0' + (slot >> i) & 1);
+        res.push_back('0' + ((slot >> i) & 1));
     }
     return res;
 }
