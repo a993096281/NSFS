@@ -117,7 +117,7 @@ void DirRandomRange(DB* db){
                 fname = it->fname();
                 value = it->value();
                 uint64_t hash_fname = it->hash_fname();
-                DBG_LOG("range:%d key:%lu fname:%.*s value:%lx hash_fname:%lx %lx", i, key, 8, fname.c_str(), value, MurmurHash64(fname, 8), hash_fname);
+                DBG_LOG("range:%d key:%lu fname:%.*s value:%lx hash_fname:%lx %lx", i, key, 8, fname.c_str(), value, MurmurHash64(fname.c_str(), 8), hash_fname);
 
             }
             delete it;
