@@ -33,6 +33,7 @@ public:
 
 
     virtual void PrintDir();
+    virtual void PrintInode();
 private:
     const Option option_;
     const string db_name_;

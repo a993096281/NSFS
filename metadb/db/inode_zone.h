@@ -37,6 +37,9 @@ public:
 
     int DeleteFlie(pointer_t value_addr);   ////在文件中删除该地址，标记无效kv的个数
     uint32_t get_zone_id() { return zone_id_; }
+    int GetValueByAddr(pointer addr, string &value) { return ReadFile(addr, value); }
+
+    void PrintInode();
 private: 
     uint32_t zone_id_;
     Option option_;

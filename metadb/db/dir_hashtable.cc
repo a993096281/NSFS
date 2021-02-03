@@ -31,7 +31,7 @@ DirHashTable::DirHashTable(const Option &option, uint32_t hash_type, uint64_t ca
 
     //init
     version_ = new HashVersion(capacity);
-    DBG_LOG("dir create hashtable:%p version:%p capacity:%lu", this, version_, capacity);
+    DBG_LOG("[dir] create hashtable:%p version:%p capacity:%lu", this, version_, capacity);
     version_->Ref();
 }
 
@@ -93,7 +93,7 @@ inline uint32_t DirHashTable::hash_id(const inode_id_t key, const uint64_t capac
 void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, LinkListOp &op){
     NvmHashEntry *entry = &(version->buckets_[index]);
     if(op.res != entry->root) {
-        DBG_LOG("version:%p entry:%u update new root:%lu old:%lu", version, index, op.res, entry->root);
+        DBG_LOG("[dir] version:%p entry:%u update new root:%lu old:%lu", version, index, op.res, entry->root);
         entry->SetRootPersist(op.res);
     }
     uint32_t add_linknode_num = op.add_linknode_list.size();
@@ -132,7 +132,7 @@ void DirHashTable::HashEntryDealWithOp(HashVersion *version, uint32_t index, Lin
 
     if(hash_type_ == 2){  //有可能扩展
         if(NeedSecondHashDoRehash()){
-            DBG_LOG("dir second hash add rehash job, version:%p node_num:%lu", version, version->node_num_.load());
+            DBG_LOG("[dir] second hash add rehash job, version:%p node_num:%lu", version, version->node_num_.load());
             thread_pool->Schedule(&DirHashTable::SecondHashDoRehashJob, this);
         }
     }
@@ -322,7 +322,7 @@ struct TranToSecondHashJob{
 
 void DirHashTable::AddHashEntryTranToSecondHashJob(HashVersion *version, uint32_t index){
     TranToSecondHashJob *job = new TranToSecondHashJob(this, version, index);
-    DBG_LOG("dir hash entry tran second hash add job, version:%p index:%u node_num:%u", version, index, version->buckets_[index].node_num);
+    DBG_LOG("[dir] hash entry tran second hash add job, version:%p index:%u node_num:%u", version, index, version->buckets_[index].node_num);
     thread_pool->Schedule(&DirHashTable::HashEntryTranToSecondHashWork, job);   //添加后台任务
 }
 
@@ -335,7 +335,7 @@ void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
         delete job;
         return ;
     }
-    DBG_LOG("dir do tran second hash start, version:%p index:%u", job->version, job->index);
+    DBG_LOG("[dir] do tran second hash start, version:%p index:%u", job->version, job->index);
     uint64_t second_hash_capacity = job->hashtable->option_.DIR_SECOND_HASH_INIT_SIZE;
     DirHashTable *second_hash = new DirHashTable(job->hashtable->option_, 2, second_hash_capacity);
     
@@ -375,7 +375,7 @@ void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
     HashVersion *version = second_hash->version_;
     for(uint32_t i = 0; i < second_hash_capacity; i++){
         if(!buckets[i].empty()){
-            DBG_LOG("dir do tran second hash, version:%p index:%u second entry:%u", job->version, job->index, i);
+            DBG_LOG("[dir] do tran second hash, version:%p index:%u second entry:%u", job->version, job->index, i);
             MemoryTranToNVMLinkNode(buckets[i], root, nodes_num);
             version->buckets_[i].SetRootPersist(root);
             version->buckets_[i].SetNodeNumPersist(nodes_num);
@@ -384,7 +384,7 @@ void DirHashTable::HashEntryTranToSecondHashWork(void *arg){
     pointer_t old_entry_root = SECOND_HASH_POINTER | NODE_GET_OFFSET(version->buckets_);
     entry->SetRootPersist(old_entry_root);
     entry->SetSecondHashPersist(second_hash);
-    DBG_LOG("dir do tran second hash end, hash:%p version:%p index:%u old entry:%lx", second_hash, job->version, job->index, old_entry_root);
+    DBG_LOG("[dir] do tran second hash end, hash:%p version:%p index:%u old entry:%lx", second_hash, job->version, job->index, old_entry_root);
     job->version->rwlock_[job->index].Unlock();
     job->version->node_num_.fetch_sub(free_list.size());
 
@@ -409,17 +409,17 @@ void DirHashTable::SecondHashDoRehashWork(){
     rehash_version_->Ref();
     is_rehash_ = true;
     version_lock_.Unlock();
-    DBG_LOG("dir second hash rehash start, version:%p rehash_version:%p", version_, rehash_version_);
+    DBG_LOG("[dir] second hash rehash start, version:%p rehash_version:%p", version_, rehash_version_);
     //开始逐步迁移数据到rehash_version_中
     for(uint32_t index = 0; index < version_->capacity_; index++){
-        DBG_LOG("dir second hash rehash doing, version:%p rehash_version:%p index:%u", version_, rehash_version_, index);
+        DBG_LOG("[dir] second hash rehash doing, version:%p rehash_version:%p index:%u", version_, rehash_version_, index);
         //PrintVersion(version_);
         MoveEntryToRehash(version_, index, rehash_version_);
         //PrintVersion(rehash_version_);
 
     }
     //迁移完
-    DBG_LOG("dir second hash rehash end, version:%p rehash_version:%p", version_, rehash_version_);
+    DBG_LOG("[dir] second hash rehash end, version:%p rehash_version:%p", version_, rehash_version_);
     version_lock_.Lock();
     HashVersion *old_version = version_;
     version_ = rehash_version_;
@@ -529,26 +529,22 @@ Iterator* DirHashTable::DirHashTableGetIterator(const inode_id_t target){
 
 void DirHashTable::PrintVersion(HashVersion *version){
     if(version == nullptr) return ;
-    DBG_LOG("dir hashtable verion:%p capacity:%lu node_num:%u", version, version->capacity_, version->node_num_.load());
+    DBG_LOG("[dir] hashtable verion:%p capacity:%lu node_num:%u", version, version->capacity_, version->node_num_.load());
     for(uint32_t i = 0; i < version->capacity_; i++){
         NvmHashEntry *entry = &(version->buckets_[i]);
         if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
             DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
-            DBG_LOG("dir hashtable hash version:%p entry:%u is second hash:%p version:%p re_version:%p", version, i, second_hash, second_hash->version_, second_hash->rehash_version_);
+            DBG_LOG("[dir] hashtable hash version:%p entry:%u is second hash:%p version:%p re_version:%p", version, i, second_hash, second_hash->version_, second_hash->rehash_version_);
             second_hash->PrintHashTable();
         } else {
-            DBG_LOG("dir hashtable hash version:%p entry:%u root:%u node_num:%u", version, i, entry->root, entry->node_num);
+            DBG_LOG("[dir] hashtable hash version:%p entry:%u root:%u node_num:%u", version, i, entry->root, entry->node_num);
             PrintLinkList(entry->root);
         }
     }
 }
 
 void DirHashTable::PrintHashTable(){
-    DBG_LOG("dir hashtable print! hashtable:%p", this);
-    if(version_ == nullptr) {
-        DBG_LOG("dir hashtable verison is nullptr");
-        return ;
-    }
+    DBG_LOG("[dir] hashtable print! hashtable:%p version:%p re_version:%p", this, version_, rehash_version_);
     PrintVersion(version_);
     PrintVersion(rehash_version_);
 }

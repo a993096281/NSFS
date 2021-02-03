@@ -11,7 +11,7 @@ static inline uint64_t Random64(uint32_t *seed){
 
 void DirRandomWrite(DB* db){
     uint32_t seed = 1000;
-    uint64_t nums = 100;
+    uint64_t nums = 1000;
 
     inode_id_t key;
     char *fname = new char[8 + 1];
@@ -99,7 +99,7 @@ void DirRandomDelete(DB* db){
 }
 void DirRandomRange(DB* db){
     uint32_t seed = 1000;
-    uint64_t nums = 100;
+    uint64_t nums = 1000;
 
     inode_id_t key;
     string fname;
@@ -126,22 +126,102 @@ void DirRandomRange(DB* db){
     printf("(%lu of %lu found)", found, nums);
 }
 
+void InodeRandomWrite(DB* db){
+    uint32_t seed = 1000;
+    uint64_t nums = 1000;
+
+    inode_id_t key;
+    char *value = new char[16 + 1];
+    uint64_t id = 0;
+    int ret = 0;
+    for(int i = 0; i < nums; i++){
+        //id = Random64(&seed);
+        id = Random64(&seed) % nums;
+        key = id;
+        snprintf(value, 16 + 1, "%0*llx", 16, id);
+
+        ret = db->InodePut(key, Slice(value, 16));
+        if(ret != 0){
+            fprintf(stderr, "inode put error! key:%lu value:%.*s \n", key, 16, value);
+            fflush(stderr);
+            exit(1);
+        }
+    }
+    delete value;
+    db->PrintInode();
+}
+
+void InodeRandomRead(DB* db){
+    uint32_t seed = 1000;
+    uint64_t nums = 1000;
+
+    inode_id_t key;
+    string value;
+    uint64_t id = 0;
+    uint64_t found = 0;
+    int ret = 0;
+    for(int i = 0; i < nums; i++){
+        //id = Random64(&seed);
+        id = Random64(&seed) % nums;
+        key = id;
+        ret = db->InodeGet(key, value);
+        if(ret != 0 && ret != 2){
+            fprintf(stderr, "inode get error! key:%lu \n", key);
+            fflush(stderr);
+            exit(1);
+        }
+        if(ret == 0) {
+            found++;
+        }
+        else{
+            fprintf(stdout, "inode read no found! key:%lu \n", key);
+        }
+    }
+    printf("(%lu of %lu found)", found, nums);
+}
+
+void InodeRandomDelete(DB* db){
+    uint32_t seed = 1000;
+    uint64_t nums = 1000;
+
+    inode_id_t key;
+    uint64_t id = 0;
+    int ret = 0;
+    for(int i = 0; i < nums; i++){
+        //id = Random64(&seed);
+        id = Random64(&seed) % nums;
+        key = id;
+
+        ret = db->InodeDelete(key);
+        if(ret != 0 && ret != 2){
+            fprintf(stderr, "inode delete error!key:%lu \n", key);
+            fflush(stderr);
+            exit(1);
+        }
+        db->PrintInode();
+    }
+}
+
+
 int main(int argc, char *argv[])
 {
     DB *db;
     Option option;
     option.DIR_FIRST_HASH_MAX_CAPACITY = 1;
     option.INODE_MAX_ZONE_NUM = 1;
+    option.INODE_HASHTABLE_INIT_SIZE = 16;
     int ret = DB::Open(option, "testdb", &db);
     if(ret != 0){
         fprintf(stderr, "open db error, Test stop\n");
         return -1;
     }
 
-    DirRandomWrite(db);
+    //DirRandomWrite(db);
     //DirRandomRead(db);
     //DirRandomDelete(db);
-    DirRandomRange(db);
+    //DirRandomRange(db);
+
+    InodeRandomWrite(db);
 
     delete db;
     return 0;

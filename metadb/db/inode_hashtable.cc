@@ -232,6 +232,7 @@ void InodeHashTable::HashEntryDealWithOp(InodeHashVersion *version, uint32_t ind
 
     if(NeedRehash(version)){
         //rehash
+        DBG_LOG("[inode] add rehash job, version:%p node_num:%lu", version, version->node_num_.load());
         thread_pool->Schedule(&InodeHashTable::BackgroundRehashWrapper, this);
     }
     
@@ -416,11 +417,15 @@ void InodeHashTable::BackgroundRehash(){
     is_rehash_ = true;
     version_lock_.Unlock();
 
+    DBG_LOG("[inode] second hash rehash start, version:%p rehash_version:%p", version_, rehash_version_);
+
     //开始逐步迁移数据到rehash_version_中
     for(uint32_t index = 0; index < version_->capacity_; index++){
+        DBG_LOG("[inode] second hash rehash doing, version:%p rehash_version:%p index:%u", version_, rehash_version_, index);
         MoveEntryToRehash(version_, index, rehash_version_);
     }
     //迁移完
+    DBG_LOG("[inode] second hash rehash end, version:%p rehash_version:%p", version_, rehash_version_);
     version_lock_.Lock();
     InodeHashVersion *old_version = version_;
     version_ = rehash_version_;
@@ -465,6 +470,52 @@ void InodeHashTable::MoveEntryToRehash(InodeHashVersion *version, uint32_t index
     for(auto it : free_list) {
         node_allocator->Free(it, INODE_HASH_ENTRY_SIZE);
     }
+}
+
+string PrintSlot(uint16_t slot, uint16_t num){
+    string res;
+    for(uint16_t i = 0; i < num; i++){
+        res.push_back('0' + (slot >> i) & 1);
+    }
+    return res;
+}
+
+int PrintEntry(pointer_t root){  //返回kv条数
+    pointer_t cur = root;
+    NvmInodeHashEntryNode *cur_node;
+    int nums = 0;
+    while(!IS_INVALID_POINTER(cur)) {
+        cur_node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(cur));
+        DBG_LOG("[inode] node:%lu num:%u slot:%.*s prev:%lu next:%lu", cur, cur_node->num, INODE_HASH_ENTRY_NODE_CAPACITY,
+            PrintSlot(cur_node->slot, INODE_HASH_ENTRY_NODE_CAPACITY).c_str(), cur_node->prev, cur_node->next);
+        for(uint16_t i = 0; i < INODE_HASH_ENTRY_NODE_CAPACITY; i++){
+            if(!slot_get_index(cur_node->slot, i)) continue;
+            string value;
+            inode_zone_->GetValueByAddr(cur_node->entry[i].pointer, value);
+            DBG_LOG("[inode] node:%lu %u key:%lu pointer:%lu value:%s", cur, i, cur_node->entry[i].key, cur_node->entry[i].pointer, value.c_str());
+        }
+        nums += cur_node->num;
+        cur = cur_node->next;
+    }
+    return nums;
+}
+
+void InodeHashTable::PrintVersion(InodeHashVersion *version){
+    if(version == nullptr) return ;
+    DBG_LOG("[inode] hashtable verion:%p capacity:%lu node_num:%u", version, version->capacity_, version->node_num_.load());
+    int nums = 0;
+    for(uint32_t i = 0; i < version->capacity_; i++){
+        NvmInodeHashEntry *entry = &(version->buckets_[i]);
+        DBG_LOG("[inode] hashtable hash version:%p entry:%u root:%u ", version, i, entry->root);
+        nums += PrintEntry(entry->root);
+    }
+    DBG_LOG("[inode] hashtable verion:%p kv nums:%d", version, nums);
+}
+
+void InodeHashTable::PrintHashTable(){
+    DBG_LOG("[inode] hashtable print! hashtable:%p version:%p re_version:%p", this, version_, rehash_version_);
+    PrintVersion(version_);
+    PrintVersion(rehash_version_);
 }
 
 } // namespace name

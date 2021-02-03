@@ -37,6 +37,7 @@ public:
     virtual void WaitForBGJob() = 0;
     ///统计
     virtual void PrintDir() = 0;
+    virtual void PrintInode() = 0;
 };
 
 

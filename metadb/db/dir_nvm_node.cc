@@ -347,7 +347,7 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             BptreeInsert(bop, MurmurHash64(fname.data(), fname.size()), fname, value);
             op.AddBptreeOp(bop);
             if(bop.root != bop.res){  //修改根节点
-                DBG_LOG("key:%lu bptree modify new root:%lu old:%lu", key, bop.res, bop.root);
+                DBG_LOG("[dir] key:%lu bptree modify new root:%lu old:%lu", key, bop.res, bop.root);
                 cur->SetBufPersist(res.key_offset + 8 + 4, &bop.res, sizeof(pointer_t));
             }
             return 0;
@@ -407,7 +407,7 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
                 root->Flush();
 
                 op.add_leafnode_list.push_back(NODE_GET_OFFSET(root));
-                DBG_LOG("key:%lu tran to bptree:%lu num:%u len:%u", key, NODE_GET_OFFSET(root), root->num, root->len);
+                DBG_LOG("[dir] key:%lu tran to bptree:%lu num:%u len:%u", key, NODE_GET_OFFSET(root), root->num, root->len);
                 //处理转换成b+tree后的链表；
 
                 delete[] buf;
@@ -805,7 +805,7 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
             if(IS_INVALID_POINTER(bop.res)){  //根节点删除了，
                 return LinkNodeDeleteBptree(op, res, cur);
             }
-            DBG_LOG("key:%lu bptree modify new root:%lu old:%lu", key, bop.res, bop.root);
+            DBG_LOG("[dir] key:%lu bptree modify new root:%lu old:%lu", key, bop.res, bop.root);
             //根节点替换，直接修改根节点地址
             cur->SetBufPersist(res.key_offset + 8 + 4, &bop.res, sizeof(pointer_t));
         }
@@ -1163,7 +1163,7 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
                 bop.root = bptree;
                 bop.res = bptree;
 
-                DBG_LOG("dir do rehash, key:%lu new is bptree:%lu, kvs is not bptree", key, bptree);
+                DBG_LOG("[dir] do rehash, key:%lu new is bptree:%lu, kvs is not bptree", key, bptree);
 
                 uint64_t hash_fname;
                 uint32_t value_len;
@@ -1194,7 +1194,7 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
                 bop.root = kvs_bptree;
                 bop.res = kvs_bptree;
 
-                DBG_LOG("dir do rehash, key:%lu new is bptree:%lu, kvs is bptree:%lu", key, res_bptree, kvs_bptree);
+                DBG_LOG("[dir] do rehash, key:%lu new is bptree:%lu, kvs is bptree:%lu", key, res_bptree, kvs_bptree);
 
                 pointer_t head = INVALID_POINTER;
                 BptreeGetLinkHeadNode(res_bptree, head);
@@ -1227,7 +1227,7 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
             bop.root = bptree;
             bop.res = bptree;
 
-            DBG_LOG("dir do rehash, key:%lu new is not bptree, kvs is bptree:%lu", key, bptree);
+            DBG_LOG("[dir] do rehash, key:%lu new is not bptree, kvs is bptree:%lu", key, bptree);
 
             uint64_t hash_fname;
             uint32_t value_len;
@@ -2549,7 +2549,7 @@ string BufTranToHex(const char *buf, uint32_t len){  //将buf转成数字16进�
 }
 void printBptree(pointer_t root){
     if(IS_INVALID_POINTER(root)) return;
-    DBG_LOG("Bptree: root:%lu", root);
+    DBG_LOG("[dir] Bptree: root:%lu", root);
     pointer_t cur = root;
     uint32_t level = 0;
     uint32_t size = 0;
@@ -2557,7 +2557,7 @@ void printBptree(pointer_t root){
     queues.push(cur);
     while(!queues.empty() && !IS_INVALID_POINTER(queues.front())){
         size = queues.size();
-        DBG_LOG("level:%u size:%u", level, size);
+        DBG_LOG("[dir] level:%u size:%u", level, size);
         for(uint32_t i = 0; i < size; i++){
             cur = queues.front();
             if(IsIndexNode(cur)){  //中间节点查找
@@ -2569,18 +2569,18 @@ void printBptree(pointer_t root){
                     str.append(buf, strlen(buf));
                     queues.push(cur_node->entry[j].pointer);
                 }
-                DBG_LOG("level:%u %3u index node:%6lu num:%u value:%s", level, i, cur, cur_node->num, str.c_str());
+                DBG_LOG("[dir] level:%u %3u index node:%6lu num:%u value:%s", level, i, cur, cur_node->num, str.c_str());
             }
             else{    //叶子节点查找
                 BptreeLeafNode *cur_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(cur));
-                DBG_LOG("level:%u %3u leaf node:%6lu num:%u len:%u prev:%lu next:%lu", level, i, cur, cur_node->num, \
+                DBG_LOG("[dir] level:%u %3u leaf node:%6lu num:%u len:%u prev:%lu next:%lu", level, i, cur, cur_node->num, \
                     cur_node->len, cur_node->prev, cur_node->next);
                 uint64_t temp_key;
                 uint32_t len;
                 uint32_t offset = 0;
                 for(uint32_t j = 0; j < cur_node->num; j++){
                     cur_node->DecodeBufGetKeyValuelen(offset, temp_key, len);
-                    DBG_LOG("level:%u %3u leaf node:%6lu %02u key:%016lx len:%u value:%.*s", level, i, cur, j, temp_key, len, len - sizeof(inode_id_t), cur_node->buf + offset + 8 + 4);
+                    DBG_LOG("[dir] level:%u %3u leaf node:%6lu %02u key:%016lx len:%u value:%.*s", level, i, cur, j, temp_key, len, len - sizeof(inode_id_t), cur_node->buf + offset + 8 + 4);
                     offset += (8 + 4 + len);
                 }
             }
@@ -2597,7 +2597,7 @@ void PrintLinkList(pointer_t root){
 
     while(!IS_INVALID_POINTER(cur)) {
         LinkNode *cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
-        DBG_LOG("linknode:%lu num:%u len:%u min:%lu max:%lu prev:%lu next:%lu", cur, cur_node->num, \
+        DBG_LOG("[dir] linknode:%lu num:%u len:%u min:%lu max:%lu prev:%lu next:%lu", cur, cur_node->num, \
             cur_node->len, cur_node->min_key, cur_node->max_key, cur_node->prev, cur_node->next);
         inode_id_t key;
         uint32_t key_num, key_len;
@@ -2605,14 +2605,14 @@ void PrintLinkList(pointer_t root){
         for(uint32_t i = 0; i < cur_node->num; i++){
             cur_node->DecodeBufGetKeyNumLen(offset, key, key_num, key_len);
             if(key_num == 0){
-                DBG_LOG("i:%u key:%lu btree:%lu", i, key, cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4));
+                DBG_LOG("[dir] i:%u key:%lu btree:%lu", i, key, cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4));
                 pointer_t bptree = cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4);
                 printBptree(bptree);
                 offset += sizeof(inode_id_t) + 4 + 8;
             } 
             else {
                 string kvs = BufTranToHex(cur_node->buf + offset + sizeof(inode_id_t) + 8, key_len);
-                DBG_LOG("i:%u key:%lu key_num:%u key_len:%u kvs:%.*s", i, key, key_num, key_len, kvs.size(), kvs.c_str());
+                DBG_LOG("[dir] i:%u key:%lu key_num:%u key_len:%u kvs:%.*s", i, key, key_num, key_len, kvs.size(), kvs.c_str());
                 offset += sizeof(inode_id_t) + 8 + key_len;
             }
         }

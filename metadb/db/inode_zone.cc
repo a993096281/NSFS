@@ -172,5 +172,18 @@ int InodeZone::InodeUpdate(const inode_id_t key, const Slice &new_value){
     return res;
 }
 
+void InodeZone::PrintInode(){
+    hashtable_->PrintHashTable();
+    uint64_t nums = 0;
+    uint64_t invalid_nums = 0;
+    for(auto it : files_){
+        DBG_LOG("[inode] file:%lu num:%lu write_pointer:%lu invalid_num:%lu", it->first, it->second->num, \
+                it->second->write_offset, it->second->invalid_num);
+        nums += it->second->num;
+        invalid_nums += it->second->invalid_num;
+    }
+    DBG_LOG("[inode] files:%u nums:%lu invalid:%lu valid:%ld", files_.size(), nums, invalid_nums, nums - invalid_nums);
+}
+
 
 } // namespace name

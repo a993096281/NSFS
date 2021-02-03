@@ -172,6 +172,8 @@ public:
     virtual int Update(const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
     virtual int Delete(const inode_id_t key, pointer_t &value);
 
+    void PrintHashTable();
+
 private:
     const Option option_;
     InodeZone *inode_zone_;    //主要扩展时可以会调用删除旧地址值
@@ -197,6 +199,8 @@ private:
     void BackgroundRehash();
     void MoveEntryToRehash(InodeHashVersion *version, uint32_t index, InodeHashVersion *rehash_version);
 
+    void PrintVersion(InodeHashVersion *version);
+
 };
 
 NvmInodeHashEntryNode *AllocHashEntryNode();
@@ -205,6 +209,8 @@ int InodeHashEntryLinkOnlyInsert(InodeHashEntryLinkOp &op, const inode_id_t key,
 int InodeHashEntryLinkUpdate(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
 int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, pointer_t &value);
 int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t &value);
+
+int PrintEntry(pointer_t root);
 
 } // namespace name
 
