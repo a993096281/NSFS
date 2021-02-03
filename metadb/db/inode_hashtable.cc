@@ -143,7 +143,7 @@ int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, pointer_t &value
     HashEntryLinkSearchKey(res, root, key);
     if(res.key_find){  //已存在
         NvmInodeHashEntryNode *node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(res.node));
-        value = node->entry[res.index].key;
+        value = node->entry[res.index].pointer;
         return 0;
     }
     return 2;  //key不存在
