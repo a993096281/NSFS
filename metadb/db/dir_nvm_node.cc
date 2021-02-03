@@ -1199,7 +1199,7 @@ int RehashLinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, st
                 pointer_t head = INVALID_POINTER;
                 BptreeGetLinkHeadNode(res_bptree, head);
                 BptreeLeafNode *head_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(head));
-                Iterator *it = dynamic_cast<Iterator *>(new BptreeIterator(head_node));
+                Iterator *it = new BptreeIterator(head_node);
                 uint64_t hash_fname;
                 Slice fname;
                 inode_id_t value;
@@ -2527,10 +2527,10 @@ Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target){
         if(IS_INVALID_POINTER(head)) return nullptr;
         BptreeLeafNode *head_node = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(head));
 
-        return dynamic_cast<Iterator *>(new BptreeIterator(head_node));
+        return new BptreeIterator(head_node);
     }
     //linklist
-    return dynamic_cast<Iterator *>(new LinkNodeIterator(search, res.key_offset, res.key_num, res.key_len));
+    return new LinkNodeIterator(search, res.key_offset, res.key_num, res.key_len);
 }
 
 //////
