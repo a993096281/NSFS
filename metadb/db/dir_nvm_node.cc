@@ -812,7 +812,7 @@ int LinkNodeDelete(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
         return 0;
     }
     if(!res.fname_find) return 2;
-    uint32_t del_len = (res.key_num == 1) ? (sizeof(inode_id_t) + 8 + 8 + 4 + res.key_len) : (8 + 4 + res.key_len);
+    uint32_t del_len = (res.key_num == 1) ? (sizeof(inode_id_t) + 8 + res.key_len) : (8 + 4 + res.value_len);
     uint32_t remain_len = cur->len - del_len;
     if(remain_len != 0 && remain_len < LINK_NODE_TRIG_MERGE_SIZE ){ //可能需要合并
         if(!IS_INVALID_POINTER(cur->next)){  
