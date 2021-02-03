@@ -109,7 +109,7 @@ string BptreeIterator::fname() const {
     uint64_t hash_fname;
     uint32_t value_len;
     cur_node_->DecodeBufGetKeyValuelen(cur_offset_, hash_fname, value_len);
-    return string(cur_node_->buf + cur_offset_ + 8, value_len - sizeof(inode_id_t));
+    return string(cur_node_->buf + cur_offset_ + 8 + 4, value_len - sizeof(inode_id_t));
 }
 
 uint64_t BptreeIterator::hash_fname() const {
