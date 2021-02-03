@@ -111,7 +111,7 @@ void DirRandomRange(DB* db){
         //id = Random64(&seed);
         id = Random64(&seed) % nums;
         key = id;
-        Iterator *it = thread->db->DirGetIterator(key);
+        Iterator *it = db->DirGetIterator(key);
         if(it != nullptr){
             for(it->SeekToFirst(); it->Valid(); it->Next()){
                 fname = it->fname();
