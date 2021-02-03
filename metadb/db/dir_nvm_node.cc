@@ -2518,8 +2518,6 @@ Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target){
     LinkNodeSearchKey(res, search_node, target);
     if(!res.key_find) return nullptr;
 
-    DBG_LOG("creat iterator");
-
     if(res.value_is_bptree){  //bptree
         pointer_t bptree = search_node->DecodeBufGetBptree(res.key_offset + sizeof(inode_id_t) + 4);
         pointer_t head = INVALID_POINTER;
