@@ -36,8 +36,16 @@ int InodeDB::InodeDelete(const inode_id_t key){
     return zones_[hash_zone_id(key)].InodeDelete(key);
 }
 
-uint32_t InodeDB::hash_zone_id(const inode_id_t key){
+inline uint32_t InodeDB::hash_zone_id(const inode_id_t key){
     return key % capacity_;
+}
+
+void InodeDB::PrintInode(){
+    DBG_LOG("[inode] Print inode, capacity:%lu", capacity_);
+    for(uint64_t i = 0; i < capacity_; i++){
+        DBG_LOG("[inode] Print zone:%lu", i);
+        zones_[i].PrintZone();
+    }
 }
 
 } // namespace name

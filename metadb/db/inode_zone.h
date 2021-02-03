@@ -39,7 +39,7 @@ public:
     uint32_t get_zone_id() { return zone_id_; }
     int GetValueByAddr(pointer_t addr, string &value) { return ReadFile(addr, value); }
 
-    void PrintInode();
+    void PrintZone();
 private: 
     uint32_t zone_id_;
     Option option_;

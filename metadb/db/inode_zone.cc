@@ -172,7 +172,7 @@ int InodeZone::InodeUpdate(const inode_id_t key, const Slice &new_value){
     return res;
 }
 
-void InodeZone::PrintInode(){
+void InodeZone::PrintZone(){
     hashtable_->PrintHashTable();
     uint64_t nums = 0;
     uint64_t invalid_nums = 0;

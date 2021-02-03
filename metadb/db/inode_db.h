@@ -26,12 +26,14 @@ public:
     virtual int InodeUpdate(const inode_id_t key, const Slice &new_value);
     virtual int InodeGet(const inode_id_t key, std::string &value);
     virtual int InodeDelete(const inode_id_t key);
+
+    virtual void PrintInode();
 private:
     const Option option_;
     InodeZone *zones_;
     uint64_t capacity_;
 
-    uint32_t hash_zone_id(const inode_id_t key);
+    inline uint32_t hash_zone_id(const inode_id_t key);
 };
 
 
