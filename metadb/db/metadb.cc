@@ -74,7 +74,7 @@ void MetaDB::PrintDir(){
 }
 
 void MetaDB::PrintInode(){
-    return inode_db_->PrintInode();
+    inode_db_->PrintInode();
 }
 
 }
