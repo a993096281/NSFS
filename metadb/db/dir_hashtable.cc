@@ -524,7 +524,7 @@ Iterator* DirHashTable::DirHashTableGetIterator(const inode_id_t target){
             two_it[1] = vesion_it;
             return new MergingIterator(two_it, 2);
         }
-        return (rehash_version != nullptr) ? rehash_it : vesion_it;   //
+        return (rehash_it != nullptr) ? rehash_it : vesion_it;   //
 }
 
 void DirHashTable::PrintVersion(HashVersion *version){
