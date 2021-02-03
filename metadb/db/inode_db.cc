@@ -6,6 +6,7 @@
  */
 
 #include "inode_db.h"
+#include "metadb/debug.h"
 
 namespace metadb {
 
