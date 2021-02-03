@@ -480,7 +480,7 @@ string PrintSlot(uint16_t slot, uint16_t num){
     return res;
 }
 
-int PrintEntry(pointer_t root){  //返回kv条数
+int InodeHashTable::PrintEntry(pointer_t root){  //返回kv条数
     pointer_t cur = root;
     NvmInodeHashEntryNode *cur_node;
     int nums = 0;

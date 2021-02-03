@@ -200,6 +200,7 @@ private:
     void MoveEntryToRehash(InodeHashVersion *version, uint32_t index, InodeHashVersion *rehash_version);
 
     void PrintVersion(InodeHashVersion *version);
+    int PrintEntry(pointer_t root);
 
 };
 
@@ -210,7 +211,6 @@ int InodeHashEntryLinkUpdate(InodeHashEntryLinkOp &op, const inode_id_t key, con
 int InodeHashEntryLinkGet(pointer_t root, const inode_id_t key, pointer_t &value);
 int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, const pointer_t &value);
 
-int PrintEntry(pointer_t root);
 
 } // namespace name
 
