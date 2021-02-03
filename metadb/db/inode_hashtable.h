@@ -98,7 +98,7 @@ struct NvmInodeHashEntryNode {       //无序存储key
         node_allocator->nvm_memcpy_nodrain(&(entry[index]), &temp, sizeof(InodeKeyPointer));
     }
     void SetEntryPointerPersist(uint32_t index, pointer_t ptr){
-        void *buf = reinterpret_cast<char *>(&(entry[index])) + sizeof(8);
+        void *buf = reinterpret_cast<char *>(&(entry[index])) + sizeof(inode_id_t);
         node_allocator->nvm_memmove_persist(buf, &ptr, sizeof(pointer_t));
     }
 };
