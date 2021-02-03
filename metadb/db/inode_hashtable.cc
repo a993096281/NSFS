@@ -154,7 +154,7 @@ int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, poi
     HashEntryLinkSearchKey(res, op.root, key);
     if(res.key_find){  //已存在
         NvmInodeHashEntryNode *node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(res.node));
-        value = node->entry[res.index].key;
+        value = node->entry[res.index].pointer;
         //合并暂不考虑
         if(node->num == 1){  //需要删除节点
             if(!IS_INVALID_POINTER(node->next)){
