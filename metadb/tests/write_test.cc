@@ -97,6 +97,37 @@ void DirRandomDelete(DB* db){
     db->PrintDir();
     delete fname;
 }
+void DirRandomRange(DB* db){
+    uint32_t seed = 1000;
+    uint64_t nums = 1000;
+
+    inode_id_t key;
+    string fname;
+    inode_id_t value;
+    uint64_t id = 0;
+    uint64_t found = 0;
+    int ret = 0;
+    for(int i = 0; i < nums; i++){
+        //id = Random64(&seed);
+        id = Random64(&seed) % nums;
+        key = id;
+        Iterator *it = thread->db->DirGetIterator(key);
+        if(it != nullptr){
+            for(it->SeekToFirst(); it->Valid(); it->Next()){
+                fname = it->fname();
+                value = it->value();
+                uint64_t hash_fname = it->hash_fname();
+                DBG_LOG("range:%d key:%lu fname:%.*s value:%lx hash_fname:%lx %lx", i, key, 8, fname.c_str(), value, MurmurHash64(fname, 8), hash_fname);
+
+            }
+            delete it;
+            found++;
+        }
+    }
+
+    char msg[100];
+    printf("(%lu of %lu found)", found, nums);
+}
 
 int main(int argc, char *argv[])
 {
@@ -111,8 +142,9 @@ int main(int argc, char *argv[])
     }
 
     DirRandomWrite(db);
-    DirRandomRead(db);
-    DirRandomDelete(db);
+    //DirRandomRead(db);
+    //DirRandomDelete(db);
+    DirRandomRange(db);
 
     delete db;
     return 0;
