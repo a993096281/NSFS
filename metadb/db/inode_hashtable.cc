@@ -380,25 +380,20 @@ int InodeHashTable::Update(const inode_id_t key, const pointer_t new_value, poin
     return res;
 }
 
-int InodeHashTable::Delete(const inode_id_t key, pointer_t &value){
+int InodeHashTable::Delete(const inode_id_t key, pointer_t &value1, pointer_t &value2){
     bool is_rehash = false;
     InodeHashVersion *version;
     InodeHashVersion *rehash_version;
     GetVersionAndRef(is_rehash, &version, &rehash_version);  //只是为了获取两个版本
 
     uint32_t index = hash_id(key, version->capacity_);
-     
-    int res1 = HashEntryDeleteKV(version, index, key, value);
-    
+    int res1 = HashEntryDeleteKV(version, index, key, value1);
     version->Unref();
-    int res2;
+    int res2 = 2;
     if(is_rehash) { //正在rehash，先在version删除，再在rehash_version中删除
         uint32_t index = hash_id(key, rehash_version->capacity_);
-         
-        res2 = HashEntryDeleteKV(rehash_version, index, key, value);
-        
+        res2 = HashEntryDeleteKV(rehash_version, index, key, value2);
         rehash_version->Unref();
-
     }
     return res1 & res2;  //有一个为0则为0
 }

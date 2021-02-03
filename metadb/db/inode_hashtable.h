@@ -170,7 +170,7 @@ public:
     virtual int Put(const inode_id_t key, const pointer_t value, pointer_t &old_value);
     virtual int Get(const inode_id_t key, pointer_t &value);
     virtual int Update(const inode_id_t key, const pointer_t new_value, pointer_t &old_value);
-    virtual int Delete(const inode_id_t key, pointer_t &value);
+    virtual int Delete(const inode_id_t key, pointer_t &value1, pointer_t &value2);  //正在rehash时，先删旧版本，再删新版本，可能会删两个值，如果中间又插入的话
 
     void PrintHashTable();
 

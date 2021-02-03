@@ -154,12 +154,18 @@ int InodeZone::DeleteFlie(pointer_t value_addr){
 }
 
 int InodeZone::InodeDelete(const inode_id_t key){
-    pointer_t value_addr;
-    int res = hashtable_->Delete(key, value_addr);
-    if(res == 0){
-        res = DeleteFlie(value_addr);
+    pointer_t value_addr1 = INVALID_POINTER;
+    pointer_t value_addr2 = INVALID_POINTER;
+    int res = hashtable_->Delete(key, value_addr1, value_addr2);
+    int res1 = 0;
+    int res2 = 0;
+    if(!IS_INVALID_POINTER(value_addr1)){
+        res1 = DeleteFlie(value_addr1);
     }
-    return res;
+    if(!IS_INVALID_POINTER(value_addr2)){
+        res2 = DeleteFlie(value_addr2);
+    }
+    return res1 | res2;  //两个都没问题才返回0；
 }
 
 int InodeZone::InodeUpdate(const inode_id_t key, const Slice &new_value){
