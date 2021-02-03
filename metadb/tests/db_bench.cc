@@ -502,7 +502,7 @@ void InodeRandomWrite(ThreadState* thread){
         snprintf(value, FLAGS_value_size + 1, "%0*llu", FLAGS_value_size, id);
 
         ret = thread->db->InodePut(key, Slice(value, FLAGS_value_size));
-        if(ret != 0){
+        if(ret != 0 && ret != 2){
             fprintf(stderr, "inode put error! key:%lu value:%.*s \n", key, FLAGS_value_size, value);
             fflush(stderr);
             exit(1);

@@ -128,7 +128,7 @@ void DirRandomRange(DB* db){
 
 void InodeRandomWrite(DB* db){
     uint32_t seed = 1000;
-    uint64_t nums = 1000;
+    uint64_t nums = 100;
 
     inode_id_t key;
     char *value = new char[16 + 1];
@@ -139,13 +139,14 @@ void InodeRandomWrite(DB* db){
         id = Random64(&seed) % nums;
         key = id;
         snprintf(value, 16 + 1, "%0*llx", 16, id);
-
+        DBG_LOG("inode put:%d key:%lu value:%.*s key:%lx", i, key, 16, value, key);
         ret = db->InodePut(key, Slice(value, 16));
-        if(ret != 0){
+        if(ret != 0 && ret != 2){
             fprintf(stderr, "inode put error! key:%lu value:%.*s \n", key, 16, value);
             fflush(stderr);
             exit(1);
         }
+        db->PrintInode();
     }
     delete value;
     db->PrintInode();
