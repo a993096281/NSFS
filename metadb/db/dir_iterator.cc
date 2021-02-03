@@ -87,7 +87,12 @@ void BptreeIterator::SeekToLast(){
 
 void BptreeIterator::Next(){
     cur_index_++;
-    if(!Valid()){
+    if(Valid()){
+        uint64_t hash_fname;
+        uint32_t value_len;
+        cur_node_->DecodeBufGetKeyValuelen(cur_offset_, hash_fname, value_len);
+        cur_offset_ += (8 + 4 + value_len);
+    } else {
         if(!IS_INVALID_POINTER(cur_node_->next)) {
             cur_node_ = static_cast<BptreeLeafNode *>(NODE_GET_POINTER(cur_node_->next));
             cur_index_ = 0;
@@ -97,7 +102,6 @@ void BptreeIterator::Next(){
             cur_index_ = 0;
             cur_offset_ = 0;
         }
-
     }
 }
 
