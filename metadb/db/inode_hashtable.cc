@@ -25,17 +25,19 @@ NvmInodeHashEntryNode *AllocHashEntryNode(){
     return node;
 }
 
-//将slot的index位置位1
+//将slot的index位置设为1
 static inline uint16_t slot_set_index(uint16_t slot, uint16_t index){
-    uint16_t temp = slot;
-    temp = temp | (1 << index);
-    return temp;
+    return slot | (1 << index);
+}
+
+//将slot的index位置设为0
+static inline uint16_t slot_clx_index(uint16_t slot, uint16_t index){
+    return slot & (~(1 << index));
 }
 
 //获取slot的index位置的值
 static inline bool slot_get_index(uint16_t slot, uint16_t index){
-    uint16_t temp = slot;
-    return (temp >> index) & 1;
+    return (slot >> index) & 1;
 }
 
 void HashEntryLinkSearchKey(InodeHashEntrySearchResult &res, pointer_t root, const inode_id_t key){
@@ -169,7 +171,7 @@ int InodeHashEntryLinkDelete(InodeHashEntryLinkOp &op, const inode_id_t key, poi
             }
             op.del_list.push_back(res.node);
         } else {  //直接删除一条entry
-            uint16_t slot = slot_set_index(node->slot, res.index);
+            uint16_t slot = slot_clx_index(node->slot, res.index);
             node->SetNumAndSlotPersist(node->num - 1, slot);
         }
         

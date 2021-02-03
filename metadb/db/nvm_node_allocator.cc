@@ -111,7 +111,7 @@ void NVMNodeAllocator::SetFreeIndex(uint64_t offset, uint64_t len){
     uint64_t index = offset / NODE_BASE_SIZE;
     uint64_t num = len / NODE_BASE_SIZE;
     for(uint64_t i = 0; i < num; i++){
-        bitmap_->set(index + i);
+        bitmap_->clr(index + i);
     }
     DBG_LOG("Node Free: offset:%lu, len:%lu", offset, len);
 }

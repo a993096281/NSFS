@@ -155,7 +155,7 @@ public:
         uint64_t index = offset / block_size;  //offset一定是block_size的倍数
         uint64_t num = (size + block_size - 1) / block_size;
         for(uint64_t i = 0; i < num; i++){
-            bitmap_->set(index + i);
+            bitmap_->clr(index + i);
         }
         free_blocks_ += num;
     }
