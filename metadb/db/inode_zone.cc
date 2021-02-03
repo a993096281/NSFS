@@ -182,7 +182,7 @@ void InodeZone::PrintZone(){
         nums += it.second->num;
         invalid_nums += it.second->invalid_num;
     }
-    DBG_LOG("[inode] files:%u nums:%lu invalid:%lu valid:%ld", files_.size(), nums, invalid_nums, nums - invalid_nums);
+    DBG_LOG("[inode] zone:%lu all files:%u nums:%lu invalid:%lu valid:%ld", zone_id_, files_.size(), nums, invalid_nums, nums - invalid_nums);
 }
 
 

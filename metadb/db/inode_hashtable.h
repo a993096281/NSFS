@@ -125,7 +125,7 @@ public:
         capacity_ = capacity;
         rwlock_ = new RWLock[capacity];
         buckets_ = static_cast<NvmInodeHashEntry *>(node_allocator->AllocateAndInit(sizeof(NvmInodeHashEntry) * capacity, 0));
-        node_num_.store(capacity);
+        node_num_.store(0);
         refs_.store(0);
     }
 
