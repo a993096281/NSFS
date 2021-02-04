@@ -202,7 +202,7 @@ public:
                     other.histograms_[i] = nullptr;
                 }
                 else if(other.histograms_[i] != nullptr){
-                    histograms_[i]->Merge((*other.histograms_[i]));
+                    histograms_[i]->Merge((*(other.histograms_[i])));
                 }
             }
         }
@@ -217,7 +217,7 @@ public:
 
     void FinishedOp(uint64_t num_ops, BenchmarkOperationType op_type) {
         if (FLAGS_histogram) {
-            uint64_t now = get_now_micros();;
+            uint64_t now = get_now_micros();
             uint64_t micros = now - last_op_finish_;
             if(histograms_[op_type] == nullptr){
                 histograms_[op_type] = new Histogram();
