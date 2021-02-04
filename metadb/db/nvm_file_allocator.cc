@@ -178,7 +178,7 @@ void *NVMFileAllocator::Allocate(uint64_t size){
         offset = cur->Allocate(size);
     }
     groups_mu_[type].Unlock();
-    DBG_LOG("File Allocate: size:%lu type:%u id:%lu offset:%d addr:%lu", size, type, cur->GetId(), offset, cur->GetId() * FILE_BASE_SIZE + offset);
+    //DBG_LOG("File Allocate: size:%lu type:%u id:%lu offset:%d addr:%lu", size, type, cur->GetId(), offset, cur->GetId() * FILE_BASE_SIZE + offset);
     return pmemaddr_ + (cur->GetId() * FILE_BASE_SIZE + offset);
 }
 
@@ -203,7 +203,7 @@ void NVMFileAllocator::Free(pointer_t addr, uint64_t len){
         map_groups_.erase(it);
     }
     map_mu_.Unlock();
-    DBG_LOG("Flie free: addr:%lu len:%lu type:%u id:%lu offset:%lu", addr, len, type, id, offset);
+    //DBG_LOG("Flie free: addr:%lu len:%lu type:%u id:%lu offset:%lu", addr, len, type, id, offset);
 }
 
 

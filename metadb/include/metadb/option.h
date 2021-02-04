@@ -25,10 +25,10 @@ public:
     uint64_t INODE_HASHTABLE_INIT_SIZE = 64;  //inode存储的hashtable的初始大小
     double INODE_HASHTABLE_TRIG_REHASH_TIMES = 1.5;  //inode存储的hashtable的node num 已经是capacity的INODE_HASHTABLE_TRIG_REHASH_TIMES倍，触发rehash
     
-    string node_allocator_path = "/home/lzw/test/node.pool";
-    uint64_t node_allocator_size = 4ULL * 1024 * 1024 * 1024;   //GB
-    string file_allocator_path = "/home/lzw/test/file.pool";
-    uint64_t file_allocator_size = 4ULL * 1024 * 1024 * 1024;   //GB
+    string node_allocator_path = "/pmem0/test/node.pool";
+    uint64_t node_allocator_size = 20ULL * 1024 * 1024 * 1024;   //GB
+    string file_allocator_path = "/pmem0/test/file.pool";
+    uint64_t file_allocator_size = 20ULL * 1024 * 1024 * 1024;   //GB
     uint32_t thread_pool_count = 2;
 
     Option() {}

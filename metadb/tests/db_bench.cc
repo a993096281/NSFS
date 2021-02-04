@@ -850,7 +850,7 @@ int main(int argc, char** argv){
             FLAGS_k_node_allocator_path.assign(buff, strlen(buff));
         } else if (sscanf(argv[i], "--k_node_allocator_size=%llu%c", &nums, &junk) == 1) {
             FLAGS_k_node_allocator_size = nums;
-        } else if (sscanf(argv[i], "--k_k_file_allocator_path=%100s%c", (char *)&buff, &junk) == 1) {
+        } else if (sscanf(argv[i], "--k_file_allocator_path=%100s%c", (char *)&buff, &junk) == 1) {
             FLAGS_k_file_allocator_path.assign(buff, strlen(buff));
         } else if (sscanf(argv[i], "--k_file_allocator_size=%llu%c", &nums, &junk) == 1) {
             FLAGS_k_file_allocator_size = nums;

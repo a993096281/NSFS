@@ -2,7 +2,7 @@
 
 #db="/home/lzw/ceshi"
 
-value_size="16"
+value_size="8"
 benchmarks="dir_fillrandom" 
 
 nums="1000000"  #
@@ -86,8 +86,8 @@ function FILL_PATAMS() {
         const_params=$const_params"--k_node_allocator_size=$k_node_allocator_size "
     fi
 
-    if [ -n "$k_k_file_allocator_path" ];then
-        const_params=$const_params"--k_k_file_allocator_path=$k_k_file_allocator_path "
+    if [ -n "$k_file_allocator_path" ];then
+        const_params=$const_params"--k_file_allocator_path=$k_file_allocator_path "
     fi
 
     if [ -n "$k_file_allocator_size" ];then
