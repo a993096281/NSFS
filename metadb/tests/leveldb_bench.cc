@@ -21,12 +21,12 @@
 
 #include "../util/histogram.h"
 #include "../util/lock.h"
-#include "../include/metadb/all_header.h"
+#include "../../lib/leveldb_v1.20/include/leveldb/db.h"
 #include "../db/thread_pool.h"
 
 using namespace std;
-using namespace metadb;
 using metadb::Histogram;
+using leveldb::DB;
 
 static const char* FLAGS_benchmarks =
     "dir_fillrandom,";
@@ -66,20 +66,12 @@ static int FLAGS_histogram = 1;   //0关闭，1开启
 //key 大小
 static const int FLAGS_key_size = 8;   //不可修改
 
-//Option
-static uint64_t FLAGS_k_DIR_FIRST_HASH_MAX_CAPACITY = 0;
-static uint64_t FLAGS_k_DIR_LINKNODE_TRAN_SECOND_HASH_NUM = 0;   
-static uint64_t FLAGS_k_DIR_SECOND_HASH_INIT_SIZE = 0;   
-static double FLAGS_k_DIR_SECOND_HASH_TRIG_REHASH_TIMES = 0;  
-static uint64_t FLAGS_k_INODE_MAX_ZONE_NUM = 0;   
-static uint64_t FLAGS_k_INODE_HASHTABLE_INIT_SIZE = 0;  
-static double FLAGS_k_INODE_HASHTABLE_TRIG_REHASH_TIMES = 0; 
-static string FLAGS_k_node_allocator_path;
-static uint64_t FLAGS_k_node_allocator_size = 0;   
-static string FLAGS_k_file_allocator_path;
-static uint64_t FLAGS_k_file_allocator_size = 0;   
-static uint32_t FLAGS_k_thread_pool_count = 0;
+//options
+static int FLAGS_write_buffer_size = 0;
 
+static int FLAGS_max_file_size = 0;
+
+static int FLAGS_sync = 0; //1开启
 
 
 namespace metadb {
@@ -303,7 +295,7 @@ struct ThreadState {
   int tid;             // 0..n-1 when running in n threads
   Stats stats;
   SharedState* shared;
-  DB *db;
+  leveldb::DB *db;
 
   ThreadState(int index)
       : tid(index) {
@@ -363,7 +355,7 @@ void PrintEnvironment() {
 
 void PrintHeader() {
     
-    fprintf(stdout, "METADB:    \n");
+    fprintf(stdout, "LEVELDB:    \n");
     PrintEnvironment();
     fprintf(stdout, "Keys:       %d bytes each\n", FLAGS_key_size);
     fprintf(stdout, "Values:     %d bytes each\n", FLAGS_value_size);
@@ -376,19 +368,17 @@ void PrintHeader() {
     fflush(stdout);
 }
 
-void SetOption(Option & option){
-    if(FLAGS_k_DIR_FIRST_HASH_MAX_CAPACITY != 0) option.DIR_FIRST_HASH_MAX_CAPACITY = FLAGS_k_DIR_FIRST_HASH_MAX_CAPACITY;
-    if(FLAGS_k_DIR_LINKNODE_TRAN_SECOND_HASH_NUM != 0) option.DIR_LINKNODE_TRAN_SECOND_HASH_NUM = FLAGS_k_DIR_LINKNODE_TRAN_SECOND_HASH_NUM;
-    if(FLAGS_k_DIR_SECOND_HASH_INIT_SIZE != 0) option.DIR_SECOND_HASH_INIT_SIZE = FLAGS_k_DIR_SECOND_HASH_INIT_SIZE;
-    if(FLAGS_k_DIR_SECOND_HASH_TRIG_REHASH_TIMES > 0) option.DIR_SECOND_HASH_TRIG_REHASH_TIMES = FLAGS_k_DIR_SECOND_HASH_TRIG_REHASH_TIMES;
-    if(FLAGS_k_INODE_MAX_ZONE_NUM != 0) option.INODE_MAX_ZONE_NUM = FLAGS_k_INODE_MAX_ZONE_NUM;
-    if(FLAGS_k_INODE_HASHTABLE_INIT_SIZE != 0) option.INODE_HASHTABLE_INIT_SIZE = FLAGS_k_INODE_HASHTABLE_INIT_SIZE;
-    if(FLAGS_k_INODE_HASHTABLE_TRIG_REHASH_TIMES > 0) option.INODE_HASHTABLE_TRIG_REHASH_TIMES = FLAGS_k_INODE_HASHTABLE_TRIG_REHASH_TIMES;
-    if(!FLAGS_k_node_allocator_path.empty()) option.node_allocator_path = FLAGS_k_node_allocator_path;
-    if(FLAGS_k_node_allocator_size != 0) option.node_allocator_size = FLAGS_k_node_allocator_size;
-    if(!FLAGS_k_file_allocator_path.empty()) option.file_allocator_path = FLAGS_k_file_allocator_path;
-    if(FLAGS_k_file_allocator_size != 0) option.file_allocator_size = FLAGS_k_file_allocator_size;
-    if(FLAGS_k_thread_pool_count != 0) option.thread_pool_count = FLAGS_k_thread_pool_count;
+void SetOption(leveldb::Options &options){
+    options.create_if_missing = true;
+    if(FLAGS_write_buffer_size) options.write_buffer_size = FLAGS_write_buffer_size;
+    if(FLAGS_max_file_size) options.max_file_size = FLAGS_max_file_size;
+    options.compression = leveldb::kNoCompression;
+
+    fprintf(stdout, "---------------Options---------------\n");
+    fprintf(stdout, "write_buffer_size:%u max_file_size:%lu compression:%d\n",  \
+            options.write_buffer_size, options.max_file_size, options.compression);
+    fprintf(stdout, "-------------------------------------\n");
+    fflush(stdout);
 }
 
 void ThreadBody(void* v){
@@ -418,7 +408,7 @@ void ThreadBody(void* v){
     shared->mu.Unlock();
 }
 
-void RunBenchmark(DB *db, int n, char *name, void (*method)(ThreadState*)){
+void RunBenchmark(leveldb::DB *db, int n, char *name, void (*method)(ThreadState*)){
     SharedState *shared = new SharedState(n);
 
     ThreadArg *arg = new ThreadArg[n];
@@ -460,22 +450,26 @@ void DirRandomWrite(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = FLAGS_nums / FLAGS_threads;
 
-    inode_id_t key;
+    leveldb::WriteOptions write_options;
+    if(FLAGS_sync){
+        write_options.sync = true;
+    }
+    char key[4096];
     char *fname = new char[FLAGS_value_size + 1];
-    inode_id_t value;
+    char value[8 + 1];
     uint64_t id = 0;
     uint64_t bytes = 0;
-    int ret = 0;
+    leveldb::Status ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
-        key = id;
-        value = id;
         snprintf(fname, FLAGS_value_size + 1, "%0*llu", FLAGS_value_size, id);
+        snprintf(key, FLAGS_key_size + FLAGS_value_size + 1, "%0*lu%.*s", FLAGS_key_size, id, FLAGS_value_size, fname);
+        snprintf(value, 9, "%08lx", id);
 
-        ret = thread->db->DirPut(key, Slice(fname, FLAGS_value_size), value);
-        if(ret != 0){
-            fprintf(stderr, "dir put error! key:%lu fname:%.*s value:%lu\n", key, FLAGS_value_size, fname, value);
+        ret = thread->db->Put(write_options,leveldb::Slice(key, FLAGS_key_size + FLAGS_value_size), leveldb::Slice(value, 8));
+        if(!ret.ok()){
+            fprintf(stderr, "dir put error! %s\n", ret.ToString().c_str());
             fflush(stderr);
             exit(1);
         }
@@ -490,20 +484,24 @@ void InodeRandomWrite(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = FLAGS_nums / FLAGS_threads;
 
-    inode_id_t key;
+    leveldb::WriteOptions write_options;
+    if(FLAGS_sync){
+        write_options.sync = true;
+    }
+    char key[4096];
     char *value = new char[FLAGS_value_size + 1];
     uint64_t id = 0;
     uint64_t bytes = 0;
-    int ret = 0;
+    leveldb::Status ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
-        key = id;
+        snprintf(key, FLAGS_key_size + 1, "%0*llu", FLAGS_key_size, id);
         snprintf(value, FLAGS_value_size + 1, "%0*llu", FLAGS_value_size, id);
 
-        ret = thread->db->InodePut(key, Slice(value, FLAGS_value_size));
-        if(ret != 0 && ret != 2){
-            fprintf(stderr, "inode put error! key:%lu value:%.*s \n", key, FLAGS_value_size, value);
+        ret = thread->db->Put(write_options, leveldb::Slice(key, FLAGS_key_size), leveldb::Slice(value, FLAGS_value_size));
+        if(!ret.ok()){
+            fprintf(stderr, "inode put error! %s \n", ret.ToString().c_str());
             fflush(stderr);
             exit(1);
         }
@@ -518,31 +516,26 @@ void DirRandomRead(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = (FLAGS_reads == 0) ? FLAGS_nums / FLAGS_threads : FLAGS_reads / FLAGS_threads;
 
-    inode_id_t key;
+    leveldb::ReadOptions read_options;
+    char key[4096];
     char *fname = new char[FLAGS_value_size + 1]; 
-    inode_id_t value;
+    string value;
     uint64_t id = 0;
     uint64_t found = 0;
-    int ret = 0;
+    leveldb::Status ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
-        key = id;
-        value = 0;
         snprintf(fname, FLAGS_value_size + 1, "%0*llu", FLAGS_value_size, id);
+        snprintf(key, FLAGS_key_size + FLAGS_value_size + 1, "%0*lu%.*s", FLAGS_key_size, id, FLAGS_value_size, fname);
 
-        ret = thread->db->DirGet(key, Slice(fname, FLAGS_value_size), value);
-        if(ret != 0 && ret != 2){
-            fprintf(stderr, "dir get error! key:%lu fname:%.*s\n", key, FLAGS_value_size, fname);
+        ret = thread->db->Get(read_options, leveldb::Slice(key, FLAGS_key_size + FLAGS_value_size), &value);
+        if(!ret.ok()){
+            fprintf(stderr, "dir get error! %s\n", ret.ToString().c_str());
             fflush(stderr);
             exit(1);
-        }
-        if(ret == 0) {
-            //if(value != key) fprintf(stdout, "dir get wrong value! key:%lu fname:%.*s value:%lu\n", key, FLAGS_value_size, fname, value);
+        } else {
             found++;
-        }
-        else{
-            //fprintf(stdout, "dir read no found! key:%lu fname:%.*s\n", key, FLAGS_value_size, fname);
         }
         thread->stats.FinishedOp(1, kBenchmarkReadType);
     }
@@ -558,27 +551,24 @@ void InodeRandomRead(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = (FLAGS_reads == 0) ? FLAGS_nums / FLAGS_threads : FLAGS_reads / FLAGS_threads;
 
-    inode_id_t key;
+    leveldb::ReadOptions read_options;
+    char key[4096];
     string value;
     uint64_t id = 0;
     uint64_t found = 0;
-    int ret = 0;
+    leveldb::Status ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
-        key = id;
+        snprintf(key, FLAGS_key_size + 1, "%0*llu", FLAGS_key_size, id);
 
-        ret = thread->db->InodeGet(key, value);
-        if(ret != 0 && ret != 2){
-            fprintf(stderr, "inode get error! key:%lu \n", key);
+        ret = thread->db->Get(read_options, leveldb::Slice(key, FLAGS_key_size), &value);
+        if(!ret.ok()){
+            fprintf(stderr, "inode get error! %s \n", ret.ToString().c_str());
             fflush(stderr);
             exit(1);
-        }
-        if(ret == 0) {
+        } else {
             found++;
-        }
-        else{
-            //fprintf(stdout, "inode read no found! key:%lu \n", key);
         }
         thread->stats.FinishedOp(1, kBenchmarkReadType);
     }
@@ -592,19 +582,23 @@ void DirRandomDelete(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = (FLAGS_deletes == 0) ? FLAGS_nums / FLAGS_threads : FLAGS_deletes / FLAGS_threads;
 
-    inode_id_t key;
+    leveldb::WriteOptions write_options;
+    if(FLAGS_sync){
+        write_options.sync = true;
+    }
+    char key[4096];
     char *fname = new char[FLAGS_value_size + 1]; 
     uint64_t id = 0;
-    int ret = 0;
+    leveldb::Status ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
-        key = id;
         snprintf(fname, FLAGS_value_size + 1, "%0*llu", FLAGS_value_size, id);
+        snprintf(key, FLAGS_key_size + FLAGS_value_size + 1, "%0*lu%.*s", FLAGS_key_size, id, FLAGS_value_size, fname);
 
-        ret = thread->db->DirDelete(key, Slice(fname, FLAGS_value_size));
-        if(ret != 0 && ret != 1 && ret != 2){
-            fprintf(stderr, "dir delete error!key:%lu fname:%.*s\n", key, FLAGS_value_size, fname);
+        ret = thread->db->Delete(write_options, leveldb::Slice(key, FLAGS_key_size + FLAGS_value_size));
+        if(!ret.ok()){
+            fprintf(stderr, "dir delete error! %s\n", ret.ToString().c_str());
             fflush(stderr);
             exit(1);
         }
@@ -617,17 +611,21 @@ void InodeRandomDelete(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = (FLAGS_deletes == 0) ? FLAGS_nums / FLAGS_threads : FLAGS_deletes / FLAGS_threads;
 
-    inode_id_t key;
+    leveldb::WriteOptions write_options;
+    if(FLAGS_sync){
+        write_options.sync = true;
+    }
+    char key[4096];
     uint64_t id = 0;
-    int ret = 0;
+    leveldb::Status ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
-        key = id;
+        snprintf(key, FLAGS_key_size + 1, "%0*llu", FLAGS_key_size, id);
 
-        ret = thread->db->InodeDelete(key);
-        if(ret != 0 && ret != 2){
-            fprintf(stderr, "inode delete error!key:%lu \n", key);
+        ret = thread->db->Delete(write_options, leveldb::Slice(key, FLAGS_key_size));
+        if(!ret.ok()){
+            fprintf(stderr, "inode delete error! %s \n", ret.ToString().c_str());
             fflush(stderr);
             exit(1);
         }
@@ -639,22 +637,26 @@ void DirRandomUpdate(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = (FLAGS_updates == 0) ? FLAGS_nums / FLAGS_threads : FLAGS_updates / FLAGS_threads;;
 
-    inode_id_t key;
+    leveldb::WriteOptions write_options;
+    if(FLAGS_sync){
+        write_options.sync = true;
+    }
+    char key[4096];
     char *fname = new char[FLAGS_value_size + 1];
-    inode_id_t value;
+    char value[8 + 1];
     uint64_t id = 0;
     uint64_t bytes = 0;
-    int ret = 0;
+    leveldb::Status ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
-        key = id;
-        value = id + 1;
         snprintf(fname, FLAGS_value_size + 1, "%0*llu", FLAGS_value_size, id);
+        snprintf(key, FLAGS_key_size + FLAGS_value_size + 1, "%0*lu%.*s", FLAGS_key_size, id, FLAGS_value_size, fname);
+        snprintf(value, 9, "%08lx", id + 1);
 
-        ret = thread->db->DirPut(key, Slice(fname, FLAGS_value_size), value);
-        if(ret != 0){
-            fprintf(stderr, "dir update error! key:%lu fname:%.*s value:%lu\n", key, FLAGS_value_size, fname, value);
+        ret = thread->db->Put(write_options,leveldb::Slice(key, FLAGS_key_size + FLAGS_value_size), leveldb::Slice(value, 8));
+        if(!ret.ok()){
+            fprintf(stderr, "dir update error! %s\n", ret.ToString().c_str());
             fflush(stderr);
             exit(1);
         }
@@ -669,20 +671,24 @@ void InodeRandomUpdate(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = (FLAGS_updates == 0) ? FLAGS_nums / FLAGS_threads : FLAGS_updates / FLAGS_threads;;
 
-    inode_id_t key;
+    leveldb::WriteOptions write_options;
+    if(FLAGS_sync){
+        write_options.sync = true;
+    }
+    char key[4096];
     char *value = new char[FLAGS_value_size + 1];
     uint64_t id = 0;
     uint64_t bytes = 0;
-    int ret = 0;
+    leveldb::Status ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
-        key = id;
+        snprintf(key, FLAGS_key_size + 1, "%0*llu", FLAGS_key_size, id);
         snprintf(value, FLAGS_value_size + 1, "%0*llu", FLAGS_value_size, id + 1);
 
-        ret = thread->db->InodePut(key, Slice(value, FLAGS_value_size));
-        if(ret != 0){
-            fprintf(stderr, "inode Update error! key:%lu value:%.*s \n", key, FLAGS_value_size, value);
+        ret = thread->db->Put(write_options, leveldb::Slice(key, FLAGS_key_size), leveldb::Slice(value, FLAGS_value_size));
+        if(!ret.ok()){
+            fprintf(stderr, "inode Update error! %s \n", key, ret.ToString().c_str());
             fflush(stderr);
             exit(1);
         }
@@ -697,21 +703,21 @@ void DirRandomRange(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = (FLAGS_reads == 0) ? FLAGS_nums / FLAGS_threads : FLAGS_reads / FLAGS_threads;
 
-    inode_id_t key;
-    string fname;
-    inode_id_t value;
+    leveldb::ReadOptions read_options;
+    char key[4096];
+    char *fname = new char[FLAGS_value_size + 1]; 
+    string value;
     uint64_t id = 0;
     uint64_t found = 0;
-    int ret = 0;
+    leveldb::Status ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
-        key = id;
-        Iterator *it = thread->db->DirGetIterator(key);
+        snprintf(key, FLAGS_key_size + 1, "%0*llu", FLAGS_key_size, id);
+
+        leveldb::Iterator *it = thread->db->NewIterator();
         if(it != nullptr){
-            for(it->SeekToFirst(); it->Valid(); it->Next()){
-                fname = it->fname();
-                value = it->value();
+            for(it->Seek(leveldb::Slice(key, FLAGS_key_size)); it->Valid() && memcmp(key, it->value().data(), FLAGS_key_size) == 0; it->Next()){
                 found++;
             }
             delete it;
@@ -725,15 +731,15 @@ void DirRandomRange(ThreadState* thread){
 }
 
 void RunTest(){
-    DB *db;
-    Option option;
+    leveldb::DB *db;
+    leveldb::Options option;
     
     SetOption(option);
 
     PrintHeader();
 
-    int ret = DB::Open(option, FLAGS_db_path, &db);
-    if(ret != 0){
+    leveldb::Status ret = leveldb::DB::Open(option, FLAGS_db_path, &db);
+    if(ret.ok()){
         fprintf(stderr, "open db error, Test stop\n");
         return ;
     }
@@ -832,35 +838,16 @@ int main(int argc, char** argv){
             FLAGS_value_size = n;
         } else if (sscanf(argv[i], "--histogram=%d%c", &n, &junk) == 1) {
             FLAGS_histogram = n;
-        } else if (sscanf(argv[i], "--k_DIR_FIRST_HASH_MAX_CAPACITY=%llu%c", &nums, &junk) == 1) {
-            FLAGS_k_DIR_FIRST_HASH_MAX_CAPACITY = nums;
-        } else if (sscanf(argv[i], "--k_DIR_LINKNODE_TRAN_SECOND_HASH_NUM=%llu%c", &nums, &junk) == 1) {
-            FLAGS_k_DIR_LINKNODE_TRAN_SECOND_HASH_NUM = nums;
-        } else if (sscanf(argv[i], "--k_DIR_SECOND_HASH_INIT_SIZE=%llu%c", &nums, &junk) == 1) {
-            FLAGS_k_DIR_SECOND_HASH_INIT_SIZE = nums;
-        } else if (sscanf(argv[i], "--k_DIR_SECOND_HASH_TRIG_REHASH_TIMES=%lf%c", &d, &junk) == 1) {
-            FLAGS_k_DIR_SECOND_HASH_TRIG_REHASH_TIMES = d;
-        } else if (sscanf(argv[i], "--k_INODE_MAX_ZONE_NUM=%llu%c", &nums, &junk) == 1) {
-            FLAGS_k_INODE_MAX_ZONE_NUM = nums;
-        } else if (sscanf(argv[i], "--k_INODE_HASHTABLE_INIT_SIZE=%llu%c", &nums, &junk) == 1) {
-            FLAGS_k_INODE_HASHTABLE_INIT_SIZE = nums;
-        } else if (sscanf(argv[i], "--k_INODE_HASHTABLE_TRIG_REHASH_TIMES=%lf%c", &d, &junk) == 1) {
-            FLAGS_k_INODE_HASHTABLE_TRIG_REHASH_TIMES = d;
-        } else if (sscanf(argv[i], "--k_node_allocator_path=%100s%c", (char *)&buff, &junk) == 1) {
-            FLAGS_k_node_allocator_path.assign(buff, strlen(buff));
-        } else if (sscanf(argv[i], "--k_node_allocator_size=%llu%c", &nums, &junk) == 1) {
-            FLAGS_k_node_allocator_size = nums;
-        } else if (sscanf(argv[i], "--k_file_allocator_path=%100s%c", (char *)&buff, &junk) == 1) {
-            FLAGS_k_file_allocator_path.assign(buff, strlen(buff));
-        } else if (sscanf(argv[i], "--k_file_allocator_size=%llu%c", &nums, &junk) == 1) {
-            FLAGS_k_file_allocator_size = nums;
-        } else if (sscanf(argv[i], "--k_thread_pool_count=%llu%c", &nums, &junk) == 1) {
-            FLAGS_k_thread_pool_count = nums;
+        } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
+            FLAGS_write_buffer_size = n;
+        } else if (sscanf(argv[i], "--max_file_size=%d%c", &n, &junk) == 1) {
+            FLAGS_max_file_size = n;
+        } else if (sscanf(argv[i], "--sync=%d%c", &n, &junk) == 1) {
+            FLAGS_sync = n;
         } else {
             fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
             exit(1);
         }
-
     }    
     metadb::RunTest();
     return 0;

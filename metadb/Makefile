@@ -30,6 +30,8 @@ TARGET_OBJS = $(LIB_SOURCES:.cc=)
 
 LIBRARY = libmetadb.a
 
+LEVELDB_LIBRARY = ../lib/leveldb_v1.20/out-static/libleveldb.a
+
 .PHONY: clean
 default:  all
 
@@ -59,6 +61,8 @@ db_bench: clean $(LIBRARY)
 	$(CXX) $(CFLAGS) tests/db_bench.cc $(LIBRARY) -o db_bench $(LDFLAGS);
 test: clean $(LIBRARY)
 	$(CXX) $(CFLAGS) tests/write_test.cc $(LIBRARY) -o test $(LDFLAGS);
+leveldb_bench: $(LIBRARY)
+	$(CXX) $(CFLAGS) tests/leveldb_bench.cc $(LIBRARY) $(LEVELDB_LIBRARY) -o leveldb_bench $(LDFLAGS);
 
 INSTALL_PATH := /usr/local
 INCLUDE_PATH := metadb

@@ -21,32 +21,6 @@ $(shell CC="$(CC)" CXX="$(CXX)" TARGET_OS="$(TARGET_OS)" \
 include build_config.mk
 
 TESTS = \
-	db/autocompact_test \
-	db/c_test \
-	db/corruption_test \
-	db/db_test \
-	db/dbformat_test \
-	db/fault_injection_test \
-	db/filename_test \
-	db/log_test \
-	db/recovery_test \
-	db/skiplist_test \
-	db/version_edit_test \
-	db/version_set_test \
-	db/write_batch_test \
-	helpers/memenv/memenv_test \
-	issues/issue178_test \
-	issues/issue200_test \
-	table/filter_block_test \
-	table/table_test \
-	util/arena_test \
-	util/bloom_test \
-	util/cache_test \
-	util/coding_test \
-	util/crc32c_test \
-	util/env_posix_test \
-	util/env_test \
-	util/hash_test
 
 UTILS = \
 	db/db_bench \
@@ -139,7 +113,8 @@ $(SHARED_OUTDIR)/$(SHARED_LIB3): $(SHARED_LIBOBJECTS)
 
 endif  # PLATFORM_SHARED_EXT
 
-all: $(SHARED_LIBS) $(SHARED_PROGRAMS) $(STATIC_OUTDIR)/libleveldb.a $(STATIC_OUTDIR)/libmemenv.a $(STATIC_PROGRAMS)
+#all: $(SHARED_LIBS) $(SHARED_PROGRAMS) $(STATIC_OUTDIR)/libleveldb.a $(STATIC_OUTDIR)/libmemenv.a $(STATIC_PROGRAMS)
+all: $(STATIC_OUTDIR)/libleveldb.a
 
 check: $(STATIC_PROGRAMS)
 	for t in $(notdir $(TESTS)); do echo "***** Running $$t"; $(STATIC_OUTDIR)/$$t || exit 1; done
