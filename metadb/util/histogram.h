@@ -14,7 +14,7 @@ namespace metadb {
 
 class Histogram {
 public:
-    Histogram() {}
+    Histogram() { Clear(); }
     ~Histogram() {}
 
     void Clear();
