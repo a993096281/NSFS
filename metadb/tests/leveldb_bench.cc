@@ -21,7 +21,7 @@
 
 #include "../util/histogram.h"
 #include "../util/lock.h"
-#include "../../lib/leveldb_v1.20/include/leveldb/db.h"
+#include "leveldb/db.h"
 #include "../db/thread_pool.h"
 
 using namespace std;

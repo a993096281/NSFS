@@ -31,6 +31,7 @@ TARGET_OBJS = $(LIB_SOURCES:.cc=)
 LIBRARY = libmetadb.a
 
 LEVELDB_LIBRARY = ../lib/leveldb_v1.20/out-static/libleveldb.a
+LEVELDB_INCLUDE = -I../lib/leveldb_v1.20/include
 
 .PHONY: clean
 default:  all
