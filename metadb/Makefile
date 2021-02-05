@@ -62,7 +62,7 @@ db_bench: clean $(LIBRARY)
 	$(CXX) $(CFLAGS) tests/db_bench.cc $(LIBRARY) -o db_bench $(LDFLAGS);
 test: clean $(LIBRARY)
 	$(CXX) $(CFLAGS) tests/write_test.cc $(LIBRARY) -o test $(LDFLAGS);
-leveldb_bench: $(LIBRARY)
+leveldb_bench: clean $(LIBRARY)
 	$(CXX) $(CFLAGS) tests/leveldb_bench.cc $(LIBRARY) $(LEVELDB_INCLUDE) $(LEVELDB_LIBRARY) -o leveldb_bench $(LDFLAGS);
 
 INSTALL_PATH := /usr/local
