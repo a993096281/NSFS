@@ -799,7 +799,7 @@ void RunTest(){
             method = DirRandomRange;
         }
         else if (strcmp(name, "stats") == 0){
-            PrintStats(&db);
+            PrintStats(db);
         }
         else {
             if(strlen(name) > 0){
