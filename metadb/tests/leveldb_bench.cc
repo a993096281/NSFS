@@ -717,7 +717,7 @@ void DirRandomRange(ThreadState* thread){
         id = Random64(&seed) % FLAGS_nums;
         snprintf(key, FLAGS_key_size + 1, "%0*llu", FLAGS_key_size, id);
 
-        leveldb::Iterator *it = thread->db->NewIterator();
+        leveldb::Iterator *it = thread->db->NewIterator(read_options);
         if(it != nullptr){
             for(it->Seek(leveldb::Slice(key, FLAGS_key_size)); it->Valid() && memcmp(key, it->value().data(), FLAGS_key_size) == 0; it->Next()){
                 found++;
