@@ -741,7 +741,7 @@ void RunTest(){
     PrintHeader();
 
     leveldb::Status ret = leveldb::DB::Open(option, FLAGS_db_path, &db);
-    if(ret.ok()){
+    if(!ret.ok()){
         fprintf(stderr, "open db error, Test stop\n");
         return ;
     }
