@@ -9,6 +9,7 @@
 #include "metadb/debug.h"
 #include "dir_iterator.h"
 
+using namespace std;
 namespace metadb {
 
 HashVersion::~HashVersion() {
@@ -549,5 +550,97 @@ void DirHashTable::PrintHashTable(){
     PrintVersion(rehash_version_);
 }
 
+string DirHashTable::GetSecondHashTableStats(uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_nums){
+    string res;
+    char buf[1024];
+    uint64_t temp_link_node_nums = 0;
+    uint64_t temp_index_node_nums = 0;
+    uint64_t temp_leaf_node_nums = 0;
+    if(version_ != nullptr){
+        GetSecondVersionStats(version_, temp_link_node_nums, temp_index_node_nums, temp_leaf_node_nums);
+        snprintf(buf, sizeof(buf), "version capacity:%lu nodes:%lu link_nodes:%lu index_nodes:%lu leaf_nodes:%lu ", version_->capacity_, version_->node_num_.load(), \
+                temp_link_node_nums, temp_index_node_nums, temp_leaf_node_nums);
+        res.append(buf);
+        link_node_nums += temp_link_node_nums;
+        index_node_nums += temp_link_node_nums;
+        leaf_node_nums += temp_leaf_node_nums;
+    }
+    if(rehash_version_ != nullptr){
+        temp_link_node_nums = 0;
+        temp_index_node_nums = 0;
+        temp_leaf_node_nums = 0;
+        GetSecondVersionStats(rehash_version_, temp_link_node_nums, temp_index_node_nums, temp_leaf_node_nums);
+        snprintf(buf, sizeof(buf), "rehash version capacity:%lu nodes:%lu link_nodes:%lu index_nodes:%lu leaf_nodes:%lu ", rehash_version_->capacity_, rehash_version_->node_num_.load(), \
+                temp_link_node_nums, temp_index_node_nums, temp_leaf_node_nums);
+        res.append(buf);
+        link_node_nums += temp_link_node_nums;
+        index_node_nums += temp_link_node_nums;
+        leaf_node_nums += temp_leaf_node_nums;
+    }
+    res.push_back('\n');
+    return res;
+    
+}
+
+void DirHashTable::GetSecondVersionStats(HashVersion *version, uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_nums){
+    if(version == nullptr) return ;
+    for(uint32_t i = 0; i < version->capacity_; i++){
+        NvmHashEntry *entry = &(version->buckets_[i]);
+        if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
+            assert(0);
+        } else {
+            GetLinkListStats(entry->root, link_node_nums, index_node_nums, leaf_node_nums);
+        }
+    }
+}
+
+string DirHashTable::PrintVersionStats(HashVersion *version){
+    if(version == nullptr) return ;
+    string res;
+    char buf[1024];
+    snprintf(buf, sizeof(buf), "version capacity:%lu node_num:%lu\n", version->capacity_, version->node_num_.load());
+    res.append(buf);
+
+    uint64_t all_link_node_nums = 0;
+    uint64_t all_index_node_nums = 0;
+    uint64_t all_leaf_node_nums = 0;
+
+    for(uint32_t i = 0; i < version->capacity_; i++){
+        uint64_t link_node_nums = 0;
+        uint64_t index_node_nums = 0;
+        uint64_t leaf_node_nums = 0;
+        NvmHashEntry *entry = &(version->buckets_[i]);
+        if(IS_SECOND_HASH_POINTER(entry->root)) {   //二级hash
+            snprintf(buf, sizeof(buf), "version entry:%u is second hash ", i);
+            res.append(buf);
+            DirHashTable *second_hash = static_cast<DirHashTable *>(entry->GetSecondHashAddr());
+            res.append(second_hash->GetSecondHashTableStats(link_node_nums, index_node_nums, leaf_node_nums));
+        } else {
+            GetLinkListStats(entry->root, link_node_nums, index_node_nums, leaf_node_nums);
+            snprintf(buf, sizeof(buf), "version entry:%u is linklist link_nodes:%lu index_nodes:%lu leaf_nodes:%lu", i, \
+                    link_node_nums, index_node_nums, leaf_node_nums);
+            res.append(buf);
+        }
+        all_link_node_nums += link_node_nums;
+        all_index_node_nums += index_node_nums;
+        all_leaf_node_nums += leaf_node_nums;
+    }
+    snprintf(buf, sizeof(buf), "version all link_node_nums:%lu index_node_nums:%lu leaf_node_nums:%lu\n", all_link_node_nums, all_index_node_nums, all_leaf_node_nums);
+    res.append(buf);
+    return res;
+}
+
+void DirHashTable::PrintHashTableStats(std::string &stats){
+    stats.append("--------Dir--------\n");
+    if(version_ != nullptr){
+        stats.append("---version---\n");
+        stats.append(PrintVersionStats(version_));
+    }
+    if(rehash_version_ != nullptr){
+        stats.append("---rehash version---\n");
+        stats.append(PrintVersionStats(rehash_version_));
+    }
+    stats.append("---------------------\n");
+}
 
 } // namespace name

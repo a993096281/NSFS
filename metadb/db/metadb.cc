@@ -77,4 +77,26 @@ void MetaDB::PrintInode(){
     inode_db_->PrintInode();
 }
 
+void MetaDB::PrintDirStats(std::string &stats){
+    dir_db_->PrintDirStats(stats);
+}
+
+void MetaDB::PrintInodeStats(std::string &stats){
+    inode_db_->PrintInodeStats(stats);
+}
+
+void PrintNodeAllocStats(std::string &stats){
+    if(node_allocator != nullptr) node_allocator->PrintNodeAllocatorStats(stats);
+}
+void PrintFileAllocStats(std::string &stats){
+    if(file_allocator != nullptr) file_allocator->PrintFileAllocatorStats(stats);
+}
+
+void PrintAllStats(std::string &stats){
+    dir_db_->PrintDirStats(stats);
+    inode_db_->PrintInodeStats(stats);
+    if(node_allocator != nullptr) node_allocator->PrintNodeAllocatorStats(stats);
+    if(file_allocator != nullptr) file_allocator->PrintFileAllocatorStats(stats);
+}
+
 }

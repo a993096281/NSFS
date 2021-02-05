@@ -28,6 +28,7 @@ public:
     virtual Iterator* DirGetIterator(const inode_id_t target);
 
     virtual void PrintDir();
+    virtual void PrintStats(std::string &stats);
 private:
     const Option option_;
     DirHashTable *hashtable_;

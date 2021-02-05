@@ -374,6 +374,8 @@ Iterator* LinkListGetIterator(LinkNode *root_node, const inode_id_t target);
 
 //////
 void PrintLinkList(pointer_t root);
+void GetLinkListStats(pointer_t root, uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_num);
+
 } // namespace name
 
 

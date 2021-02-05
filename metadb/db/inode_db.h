@@ -28,6 +28,7 @@ public:
     virtual int InodeDelete(const inode_id_t key);
 
     virtual void PrintInode();
+    virtual void PrintInodeStats(std::string &stats);
 private:
     const Option option_;
     InodeZone *zones_;

@@ -515,4 +515,47 @@ void InodeHashTable::PrintHashTable(){
     PrintVersion(rehash_version_);
 }
 
+void GetEntryStats(pointer_t root, uint64_t &node_nums, uint64_t &kv_nums){
+    pointer_t cur = root;
+    NvmInodeHashEntryNode *cur_node;
+    while(!IS_INVALID_POINTER(cur)) {
+        cur_node = static_cast<NvmInodeHashEntryNode *>(NODE_GET_POINTER(cur));
+        kv_nums += cur_node->num;
+        node_nums++;
+        cur = cur_node->next;
+    }
+}
+
+string InodeHashTable::PrintVersionStats(InodeHashVersion *version, uint64_t &hashtable_node_nums, uint64_t &hashtable_kv_nums){
+    if(version == nullptr) return ;
+    string res;
+    char buf[1024];
+    uint64_t node_nums = 0;
+    uint64_t kv_nums = 0;
+
+    for(uint32_t i = 0; i < version->capacity_; i++){
+        NvmInodeHashEntry *entry = &(version->buckets_[i]);
+        GetEntryStats(entry->root, node_nums, kv_nums);
+    }
+    hashtable_node_nums += node_nums;
+    hashtable_kv_nums += kv_nums;
+    snprintf(buf, sizeof(buf), "capacity:%lu nodes:%lu node_nums:%lu kv_nums:%lu ", version->capacity_, version->node_num_.load(), node_nums, kv_nums);
+    res.append(buf);
+    return res;
+}
+
+string InodeHashTable::PrintHashTableStats(uint64_t &hashtable_node_nums, uint64_t &hashtable_kv_nums){
+    string res;
+    if(version_ != nullptr){
+        res.append("version ");
+        res.append(PrintVersionStats(version_, hashtable_node_nums, hashtable_kv_nums));
+    }
+    if(rehash_version_ != nullptr){
+        res.append("rehash version ");
+        res.append(PrintVersionStats(rehash_version_, hashtable_node_nums, hashtable_kv_nums));
+    }
+    res.push_back('\n');
+    return res;
+}
+
 } // namespace name

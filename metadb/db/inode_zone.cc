@@ -191,5 +191,21 @@ void InodeZone::PrintZone(){
     DBG_LOG("[inode] zone:%lu all files:%u nums:%lu invalid:%lu valid:%ld", zone_id_, files_.size(), nums, invalid_nums, nums - invalid_nums);
 }
 
+string InodeZone::PrintZoneStats(uint64_t &file_nums, uint64_t &write_lens, uint64_t &kv_nums, uint64_t &invalid_kv_nums, uint64_t &hashtable_node_nums, uint64_t &hashtable_kv_nums){
+    string res;
+    char buf[1024];
+    file_nums = files_.size();
+    for(auto it : files_){
+        write_lens += it.second->write_offset;
+        kv_nums += it.second->num;
+        invalid_kv_nums += it.second->invalid_num;
+    }
+    snprintf(buf, sizeof(buf), "file_nums:%lu write_lens:%lu kv_nums:%lu invalid_kv_nums:%lu hashtable ", file_nums, write_lens, \
+                kv_nums, invalid_kv_nums);
+    res.append(buf);
+    res.append(hashtable_->PrintHashTableStats(hashtable_node_nums, hashtable_kv_nums));
+    return res;
+}
+
 
 } // namespace name

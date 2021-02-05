@@ -38,6 +38,13 @@ public:
     ///统计
     virtual void PrintDir() = 0;
     virtual void PrintInode() = 0;
+    virtual void PrintDirStats(std::string &stats) = 0;
+    virtual void PrintInodeStats(std::string &stats) = 0;
+
+    virtual void PrintNodeAllocStats(std::string &stats) = 0;
+    virtual void PrintFileAllocStats(std::string &stats) = 0;
+
+    virtual void PrintAllStats(std::string &stats) = 0;
 };
 
 

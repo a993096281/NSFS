@@ -724,6 +724,13 @@ void DirRandomRange(ThreadState* thread){
     thread->stats.AddMessage(msg);
 }
 
+void PrintStats(DB *db) {
+    std::string stats;
+    db->PrintAllStats(stats);
+    fprintf(stdout, "\n%s\n", stats.c_str());
+    fflush(stdout);
+}
+
 void RunTest(){
     DB *db;
     Option option;
@@ -781,9 +788,9 @@ void RunTest(){
         else if (strcmp(name, "dir_rangeread") == 0){
             method = DirRandomRange;
         }
-        // else if (strcmp(name, "stats") == 0){
-        //     PrinfStats(&db);
-        // }
+        else if (strcmp(name, "stats") == 0){
+            PrintStats(db);
+        }
         else {
             if(strlen(name) > 0){
                 fprintf(stderr, "unknown benchmark '%s'\n", name);

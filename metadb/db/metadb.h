@@ -34,6 +34,13 @@ public:
 
     virtual void PrintDir();
     virtual void PrintInode();
+    virtual void PrintDirStats(std::string &stats);
+    virtual void PrintInodeStats(std::string &stats);
+    
+    virtual void PrintNodeAllocStats(std::string &stats);
+    virtual void PrintFileAllocStats(std::string &stats);
+
+    virtual void PrintAllStats(std::string &stats);
 private:
     const Option option_;
     const string db_name_;

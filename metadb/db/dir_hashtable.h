@@ -104,6 +104,7 @@ public:
 
     
     virtual void PrintHashTable();
+    virtual void PrintHashTableStats(std::string &stats);
 
 private:
     const Option option_;
@@ -135,6 +136,9 @@ private:
     int RehashInsertKvs(HashVersion *version, uint32_t index, const inode_id_t key, string &kvs);
 
     void PrintVersion(HashVersion *version);
+    string PrintVersionStats(HashVersion *version);
+    string DirHashTable::GetSecondHashTableStats(uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_nums);
+    void DirHashTable::GetSecondVersionStats(HashVersion *version, uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_nums);
 };
 
 

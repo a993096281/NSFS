@@ -49,4 +49,42 @@ void InodeDB::PrintInode(){
     }
 }
 
+void InodeDB::PrintInodeStats(std::string &stats){
+    stats.append("--------Inode--------\n");
+    char buf[1024];
+    snprintf(buf, sizeof(buf), "Inode capacity:%lu\n", capacity_);
+    stats.append(buf);
+
+    uint64_t all_file_nums = 0;
+    uint64_t all_write_lens = 0;
+    uint64_t all_kv_nums = 0;
+    uint64_t all_invalid_kv_nums = 0;
+    uint64_t all_hashtable_node_nums = 0;
+    uint64_t all_hashtable_kv_nums = 0;
+
+    for(uint64_t i = 0; i < capacity_; i++){
+        uint64_t file_nums = 0;
+        uint64_t write_lens = 0;
+        uint64_t kv_nums = 0;
+        uint64_t invalid_kv_nums = 0;
+        uint64_t hashtable_node_nums = 0;
+        uint64_t hashtable_kv_nums = 0;
+        snprintf(buf, sizeof(buf), "zone:%lu ", i);
+        stats.append(buf);
+        stats.append(zones_[i].PrintZoneStats(file_nums, write_lens, kv_nums, invalid_kv_nums, hashtable_node_nums, hashtable_kv_nums));
+        
+        all_file_nums += file_nums;
+        all_write_lens += write_lens;
+        all_kv_nums += kv_nums;
+        all_invalid_kv_nums += invalid_kv_nums;
+        all_hashtable_node_nums += hashtable_node_nums;
+        all_hashtable_kv_nums += hashtable_kv_nums;
+    }
+    snprintf(buf, sizeof(buf), "Inode capacity:%lu all file_nums:%lu write_lens:%lu kv_nums:%lu invalid_kv_nums:%lu hashtable_node_nums:%lu hashtable_kv_nums:%lu\n", capacity_, \
+            all_file_nums, all_write_lens, all_kv_nums, all_invalid_kv_nums, all_hashtable_node_nums, all_hashtable_kv_nums);
+    stats.append(buf);
+    
+    stats.append("---------------------\n");
+}
+
 } // namespace name

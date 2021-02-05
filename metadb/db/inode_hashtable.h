@@ -173,6 +173,7 @@ public:
     virtual int Delete(const inode_id_t key, pointer_t &value1, pointer_t &value2);  //正在rehash时，先删旧版本，再删新版本，可能会删两个值，如果中间又插入的话
 
     void PrintHashTable();
+    string PrintHashTableStats(uint64_t &hashtable_node_nums, uint64_t &hashtable_kv_nums);
 
 private:
     const Option option_;
@@ -201,6 +202,9 @@ private:
 
     void PrintVersion(InodeHashVersion *version);
     int PrintEntry(pointer_t root);
+
+
+    string PrintVersionStats(InodeHashVersion *version, uint64_t &hashtable_node_nums, uint64_t &hashtable_kv_nums);
 
 };
 

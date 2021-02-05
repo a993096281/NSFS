@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <atomic>
 
 #include "metadb/libnvm.h"
 #include "../util/lock.h"
@@ -189,6 +190,9 @@ public:
     void Free(pointer_t addr, uint64_t len);
     char *GetPmemAddr() { return pmemaddr_; }
 
+    //统计
+    string PrintFileAllocatorStats(string &stats);
+
     void Sync(){
         if (is_pmem_)
             pmem_persist(pmemaddr_, capacity_);
@@ -276,6 +280,9 @@ private:
     map<uint64_t, NVMGroupManager *> map_groups_;   //防止groups_过长，导致查询效率低，每个groups都有一个id，id = offset / FILE_BASE_SIZE
     Mutex map_mu_; // map_groups_的锁
 
+    //统计
+    atomic<uint64_t> allocate_size;
+    atomic<uint64_t> free_size;
 
 
     uint64_t GetFreeIndex();

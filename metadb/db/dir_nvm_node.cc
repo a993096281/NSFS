@@ -2620,4 +2620,48 @@ void PrintLinkList(pointer_t root){
     }
 }
 
+void GetBptreeStats(pointer_t root, uint64_t &index_node_nums, uint64_t &leaf_node_nums){
+    if(IS_INVALID_POINTER(root)) return;
+    pointer_t cur = root;
+    queue<pointer_t> queues;
+    queues.push(cur);
+    while(!queues.empty() && !IS_INVALID_POINTER(queues.front())){
+        cur = queues.front();
+        if(IsIndexNode(cur)){  //中间节点
+            BptreeIndexNode *cur_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(cur));
+            for(uint32_t i = 0; i < cur_node->num; i++){
+                queues.push(cur_node->entry[i].pointer);
+            }
+            index_node_nums++;
+        }
+        else{    //叶子节点
+            leaf_node_nums++;
+        }
+        queues.pop();
+    }
+}
+
+void GetLinkListStats(pointer_t root, uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_nums){
+    if(IS_INVALID_POINTER(root)) return;
+    pointer_t cur = root;
+
+    while(!IS_INVALID_POINTER(cur)) {
+        LinkNode *cur_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur));
+        
+        inode_id_t key;
+        uint32_t key_num, key_len;
+        uint32_t offset = 0;
+        for(uint32_t i = 0; i < cur_node->num; i++){
+            cur_node->DecodeBufGetKeyNumLen(offset, key, key_num, key_len);
+            if(key_num == 0){
+                pointer_t bptree = cur_node->DecodeBufGetBptree(offset + sizeof(inode_id_t) + 4);
+                GetBptreeStats(bptree, index_node_nums, leaf_node_nums);
+                offset += sizeof(inode_id_t) + 4 + 8;
+            } 
+        }
+        link_node_nums++;
+        cur = cur_node->next;
+    }
+}
+
 } // namespace name

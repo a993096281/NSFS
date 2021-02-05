@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <string>
+#include <atomic>
 
 #include "metadb/libnvm.h"
 #include "../util/lock.h"
@@ -18,6 +19,7 @@
 #define NODE_GET_OFFSET(dst) (reinterpret_cast<char *>(dst) - metadb::node_pool_pointer)     //void *-> offset
 #define NODE_GET_POINTER(offset) (static_cast<void *>(metadb::node_pool_pointer + offset))  //offset -> void *
 
+using namespace std;
 namespace metadb {
 
 class NVMNodeAllocator;
@@ -36,6 +38,9 @@ public:
     void Free(void *addr, uint64_t len);
     void Free(pointer_t addr, uint64_t len);
     char *GetPmemAddr() { return pmemaddr_; }
+
+    //统计
+    string PrintNodeAllocatorStats(string &stats);
 
     void Sync(){
         if (is_pmem_)
@@ -117,6 +122,10 @@ private:
     BitMap *bitmap_;
 
     uint64_t last_allocate_;
+
+    //统计
+    atomic<uint64_t> allocate_size;
+    atomic<uint64_t> free_size;
 
     uint64_t GetFreeIndex(uint64_t size);
     void SetFreeIndex(uint64_t offset, uint64_t len);

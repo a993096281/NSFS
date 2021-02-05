@@ -34,6 +34,9 @@ NVMNodeAllocator::NVMNodeAllocator(const std::string path, uint64_t size){
 
     bitmap_ = new BitMap(capacity_ / NODE_BASE_SIZE);
     last_allocate_ = START_ALLOCATOR_INDEX;
+
+    allocate_size.store(0);
+    free_size.store(0);
 }
 
 NVMNodeAllocator::~NVMNodeAllocator(){
@@ -120,6 +123,7 @@ void *NVMNodeAllocator::Allocate(uint64_t size){
     uint64_t allocated = (size + NODE_BASE_SIZE - 1) & (~(NODE_BASE_SIZE - 1));  //保证按照NODE_BASE_SIZE分配
     uint64_t index = GetFreeIndex(allocated);
     //DBG_LOG("Node Allocate: size:%lu allocated:%lu index:%lu offset:%lu", size, allocated, index, index * NODE_BASE_SIZE);
+    allocate_size.fetch_add(allocated, std::memory_order_relaxed);
     return static_cast<void *>(pmemaddr_ + index * NODE_BASE_SIZE);
 
 }
@@ -135,6 +139,7 @@ void NVMNodeAllocator::Free(void *addr, uint64_t len){
     uint64_t offset = static_cast<char *>(addr) - pmemaddr_;
     assert(offset < capacity_);
     SetFreeIndex(offset, allocated);
+    free_size.fetch_add(allocated, std::memory_order_relaxed);
 }
 
 void NVMNodeAllocator::Free(pointer_t addr, uint64_t len){
@@ -142,6 +147,25 @@ void NVMNodeAllocator::Free(pointer_t addr, uint64_t len){
     uint64_t offset = addr;
     assert(offset < capacity_);
     SetFreeIndex(offset, allocated);
+    free_size.fetch_add(allocated, std::memory_order_relaxed);
+}
+
+string NVMNodeAllocator::PrintNodeAllocatorStats(string &stats){
+    char buf[1024];
+    stats.append("--------Node Alloc--------\n");
+    snprintf(buf, sizeof(buf), "DIR_LINK_NODE_SIZE:%u DIR_BPTREE_INDEX_NODE_SIZE:%u DIR_BPTREE_LEAF_NODE_SIZE:%u\n", DIR_LINK_NODE_SIZE, 
+            DIR_BPTREE_INDEX_NODE_SIZE, DIR_BPTREE_LEAF_NODE_SIZE);
+    stats.append(buf);
+
+    snprintf(buf, sizeof(buf), "INODE_HASH_ENTRY_SIZE:%u NODE_BASE_SIZE:%u \n", INODE_HASH_ENTRY_SIZE, NODE_BASE_SIZE);
+    stats.append(buf);
+
+    double alloc = 1.0 * allocate_size.load() / 1024;
+    double free = 1.0 * free_size.load() / 1024;
+    double use = alloc - free;
+    snprintf(buf, sizeof(buf), "alloc:%.3f KB free:%.3f KB use:%.3f KB \n", alloc, free, use);
+    stats.append(buf);
+    stats.append("--------------------------\n");
 }
 
 } // namespace name

@@ -40,6 +40,7 @@ public:
     int GetValueByAddr(pointer_t addr, string &value) { return ReadFile(addr, value); }
 
     void PrintZone();
+    string PrintZoneStats(uint64_t &file_nums, uint64_t &write_lens, uint64_t &kv_nums, uint64_t &invalid_kv_nums, uint64_t &hashtable_node_nums, uint64_t &hashtable_kv_nums);
 private: 
     uint32_t zone_id_;
     Option option_;
