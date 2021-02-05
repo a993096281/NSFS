@@ -23,9 +23,11 @@
 #include "../util/lock.h"
 #include "leveldb/db.h"
 #include "../db/thread_pool.h"
+#include "../include/metadb/all_header.h"
 
 using namespace std;
 using metadb::Histogram;
+using metadb::Slice;
 using leveldb::DB;
 
 static const char* FLAGS_benchmarks =
@@ -459,7 +461,7 @@ void DirRandomWrite(ThreadState* thread){
     char value[8 + 1];
     uint64_t id = 0;
     uint64_t bytes = 0;
-    leveldb::Status ret = 0;
+    leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
@@ -492,7 +494,7 @@ void InodeRandomWrite(ThreadState* thread){
     char *value = new char[FLAGS_value_size + 1];
     uint64_t id = 0;
     uint64_t bytes = 0;
-    leveldb::Status ret = 0;
+    leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
@@ -522,7 +524,7 @@ void DirRandomRead(ThreadState* thread){
     string value;
     uint64_t id = 0;
     uint64_t found = 0;
-    leveldb::Status ret = 0;
+    leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
@@ -556,7 +558,7 @@ void InodeRandomRead(ThreadState* thread){
     string value;
     uint64_t id = 0;
     uint64_t found = 0;
-    leveldb::Status ret = 0;
+    leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
@@ -589,7 +591,7 @@ void DirRandomDelete(ThreadState* thread){
     char key[4096];
     char *fname = new char[FLAGS_value_size + 1]; 
     uint64_t id = 0;
-    leveldb::Status ret = 0;
+    leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
@@ -617,7 +619,7 @@ void InodeRandomDelete(ThreadState* thread){
     }
     char key[4096];
     uint64_t id = 0;
-    leveldb::Status ret = 0;
+    leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
@@ -646,7 +648,7 @@ void DirRandomUpdate(ThreadState* thread){
     char value[8 + 1];
     uint64_t id = 0;
     uint64_t bytes = 0;
-    leveldb::Status ret = 0;
+    leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
@@ -679,7 +681,7 @@ void InodeRandomUpdate(ThreadState* thread){
     char *value = new char[FLAGS_value_size + 1];
     uint64_t id = 0;
     uint64_t bytes = 0;
-    leveldb::Status ret = 0;
+    leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
@@ -709,7 +711,7 @@ void DirRandomRange(ThreadState* thread){
     string value;
     uint64_t id = 0;
     uint64_t found = 0;
-    leveldb::Status ret = 0;
+    leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % FLAGS_nums;
