@@ -63,7 +63,7 @@ db_bench: clean $(LIBRARY)
 test: clean $(LIBRARY)
 	$(CXX) $(CFLAGS) tests/write_test.cc $(LIBRARY) -o test $(LDFLAGS);
 leveldb_bench: $(LIBRARY)
-	$(CXX) $(CFLAGS) tests/leveldb_bench.cc $(LIBRARY) $(LEVELDB_LIBRARY) -o leveldb_bench $(LDFLAGS);
+	$(CXX) $(CFLAGS) tests/leveldb_bench.cc $(LIBRARY) $(LEVELDB_INCLUDE) $(LEVELDB_LIBRARY) -o leveldb_bench $(LDFLAGS);
 
 INSTALL_PATH := /usr/local
 INCLUDE_PATH := metadb
