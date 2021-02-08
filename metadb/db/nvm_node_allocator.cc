@@ -150,7 +150,7 @@ void NVMNodeAllocator::Free(pointer_t addr, uint64_t len){
     free_size.fetch_add(allocated, std::memory_order_relaxed);
 }
 
-string NVMNodeAllocator::PrintNodeAllocatorStats(string &stats){
+void NVMNodeAllocator::PrintNodeAllocatorStats(string &stats){
     char buf[1024];
     stats.append("--------Node Alloc--------\n");
     snprintf(buf, sizeof(buf), "DIR_LINK_NODE_SIZE:%u DIR_BPTREE_INDEX_NODE_SIZE:%u DIR_BPTREE_LEAF_NODE_SIZE:%u\n", DIR_LINK_NODE_SIZE, 

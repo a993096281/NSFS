@@ -191,7 +191,7 @@ public:
     char *GetPmemAddr() { return pmemaddr_; }
 
     //统计
-    string PrintFileAllocatorStats(string &stats);
+    void PrintFileAllocatorStats(string &stats);
 
     void Sync(){
         if (is_pmem_)

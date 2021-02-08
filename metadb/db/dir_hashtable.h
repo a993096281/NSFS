@@ -137,8 +137,8 @@ private:
 
     void PrintVersion(HashVersion *version);
     string PrintVersionStats(HashVersion *version);
-    string DirHashTable::GetSecondHashTableStats(uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_nums);
-    void DirHashTable::GetSecondVersionStats(HashVersion *version, uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_nums);
+    string GetSecondHashTableStats(uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_nums);
+    void GetSecondVersionStats(HashVersion *version, uint64_t &link_node_nums, uint64_t &index_node_nums, uint64_t &leaf_node_nums);
 };
 
 

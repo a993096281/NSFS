@@ -40,7 +40,7 @@ public:
     char *GetPmemAddr() { return pmemaddr_; }
 
     //统计
-    string PrintNodeAllocatorStats(string &stats);
+    void PrintNodeAllocatorStats(string &stats);
 
     void Sync(){
         if (is_pmem_)

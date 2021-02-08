@@ -208,10 +208,10 @@ void NVMFileAllocator::Free(pointer_t addr, uint64_t len){
     }
     map_mu_.Unlock();
     //DBG_LOG("Flie free: addr:%lu len:%lu type:%u id:%lu offset:%lu", addr, len, type, id, offset);
-    free_size.fetch_add(size, std::memory_order_relaxed);
+    free_size.fetch_add(len, std::memory_order_relaxed);
 }
 
-string NVMFileAllocator::PrintFileAllocatorStats(string &stats){
+void NVMFileAllocator::PrintFileAllocatorStats(string &stats){
     char buf[1024];
     stats.append("--------File Alloc--------\n");
     snprintf(buf, sizeof(buf), "INODE_FILE_SIZE:%.3f MB FILE_BASE_SIZE:%.3f MB \n", 1.0 * INODE_FILE_SIZE / (1024 * 1024), 
@@ -224,7 +224,7 @@ string NVMFileAllocator::PrintFileAllocatorStats(string &stats){
     snprintf(buf, sizeof(buf), "alloc:%.3f MB free:%.3f MB use:%.3f MB \n", alloc, free, use);
     stats.append(buf);
     stats.append("--------------------------\n");
-}
+
 }
 
 

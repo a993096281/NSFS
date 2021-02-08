@@ -527,7 +527,7 @@ void GetEntryStats(pointer_t root, uint64_t &node_nums, uint64_t &kv_nums){
 }
 
 string InodeHashTable::PrintVersionStats(InodeHashVersion *version, uint64_t &hashtable_node_nums, uint64_t &hashtable_kv_nums){
-    if(version == nullptr) return ;
+    if(version == nullptr) return string();
     string res;
     char buf[1024];
     uint64_t node_nums = 0;
