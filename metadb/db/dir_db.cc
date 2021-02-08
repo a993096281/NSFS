@@ -41,7 +41,8 @@ void DirDB::PrintDir(){
     hashtable_->PrintHashTable();
 }
 
-void DirDB::PrintStats(std::string &stats);
+void DirDB::PrintStats(std::string &stats){
     hashtable_->PrintHashTableStats(stats);
+}
 
 } // namespace name

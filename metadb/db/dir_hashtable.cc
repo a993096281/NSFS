@@ -595,7 +595,7 @@ void DirHashTable::GetSecondVersionStats(HashVersion *version, uint64_t &link_no
 }
 
 string DirHashTable::PrintVersionStats(HashVersion *version){
-    if(version == nullptr) return ;
+    if(version == nullptr) return string();
     string res;
     char buf[1024];
     snprintf(buf, sizeof(buf), "version capacity:%lu node_num:%lu\n", version->capacity_, version->node_num_.load());
