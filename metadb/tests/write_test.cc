@@ -211,18 +211,22 @@ int main(int argc, char *argv[])
     option.DIR_FIRST_HASH_MAX_CAPACITY = 1;
     option.INODE_MAX_ZONE_NUM = 1;
     option.INODE_HASHTABLE_INIT_SIZE = 16;
+    option.file_allocator_path = "/home/lzw/test/file.pool";
+    option.node_allocator_path = "/home/lzw/test/node.pool";
+    option.file_allocator_size = 1 * 1024 * 1024;
+    option.node_allocator_path = 1 * 1024 * 1024;
     int ret = DB::Open(option, "testdb", &db);
     if(ret != 0){
         fprintf(stderr, "open db error, Test stop\n");
         return -1;
     }
 
-    //DirRandomWrite(db);
+    DirRandomWrite(db);
     //DirRandomRead(db);
     //DirRandomDelete(db);
     //DirRandomRange(db);
 
-    InodeRandomWrite(db);
+    //InodeRandomWrite(db);
 
     delete db;
     return 0;
