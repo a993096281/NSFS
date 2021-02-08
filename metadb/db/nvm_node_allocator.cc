@@ -61,8 +61,8 @@ uint64_t NVMNodeAllocator::GetFreeIndex(uint64_t size){
             }
             if(ok >= need){  //申请成功
                 last_allocate_ = i + ok;
-                for(uint64_t j = i; j < need; j++){
-                    bitmap_->set(j);
+                for(uint64_t j = 0; j < need; j++){
+                    bitmap_->set(i + j);
                 }
                 //mu_.Unlock();
                 return i;
@@ -88,8 +88,8 @@ uint64_t NVMNodeAllocator::GetFreeIndex(uint64_t size){
             }
             if(ok >= need){  //申请成功
                 last_allocate_ = i + ok;
-                for(uint64_t j = i; j < need; j++){
-                    bitmap_->set(j);
+                for(uint64_t j = 0; j < need; j++){
+                    bitmap_->set(i + j);
                 }
                 //mu_.Unlock();
                 return i;
@@ -176,7 +176,7 @@ void NVMNodeAllocator::PrintBitmap(){
         string temp;
         for(uint64_t j = 0; j < 64 && (i + j) < max;j++){
             temp.push_back('0' + bitmap_->get(i + j));
-            if(j % 8 == 0) temp.push_back(' ');
+            if(j != 0 && j % 8 == 0) temp.push_back(' ');
         }
         DBG_LOG("[bitmap] i:%lu %s", i, temp.c_str());
     }

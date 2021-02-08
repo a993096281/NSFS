@@ -34,7 +34,7 @@ public:
     int get(int x){
         int cur = x >> 3;
         int remainder = x & (7);
-        if (cur > gsize)return -1;
+        if (cur > gsize) return -1;
 
         return (bitmap[cur] >> remainder) & 1;
     };
@@ -42,8 +42,8 @@ public:
     int set(int x){
         int cur = x >> 3;
         int remainder = x & (7);
-        if (cur > gsize)return 0;
-        bitmap[cur] |= 1 << remainder;
+        if (cur > gsize) return 0;
+        bitmap[cur] |= (1 << remainder);
         return 1;
     };
 
@@ -51,7 +51,7 @@ public:
         int cur = x >> 3;
         int remainder = x & (7);
         if (cur > gsize)return 0;
-        bitmap[cur] ^= 1 << remainder;
+        bitmap[cur] &= (~(1 << remainder));
         return 1;
     };
 
