@@ -574,7 +574,7 @@ string DirHashTable::GetSecondHashTableStats(uint64_t &link_node_nums, uint64_t 
                 temp_link_node_nums, temp_index_node_nums, temp_leaf_node_nums);
         res.append(buf);
         link_node_nums += temp_link_node_nums;
-        index_node_nums += temp_link_node_nums;
+        index_node_nums += temp_index_node_nums;
         leaf_node_nums += temp_leaf_node_nums;
     }
     res.push_back('\n');
