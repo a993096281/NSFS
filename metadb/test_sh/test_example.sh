@@ -3,9 +3,14 @@
 #db="/home/lzw/ceshi"
 
 value_size="8"
-benchmarks="dir_fillrandom" 
+benchmarks="dir_fillrandom,stats" 
+#benchmarks="dir_fillrandom,stats,dir_readrandom,stats,dir_deleterandom,stats" 
+#benchmarks="inode_fillrandom,stats,inode_readrandom,stats,inode_deleterandom,stats"
 
-nums="1000000"  #
+k_node_allocator_path="/home/lzw/test/node.pool"
+k_file_allocator_path="/home/lzw/test/file.pool"
+
+nums="1000"  #
 #nums="10000000"  #1千万，0.32G
 
 reads="1000000"  #

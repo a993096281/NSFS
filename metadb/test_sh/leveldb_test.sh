@@ -4,6 +4,8 @@ db="/home/lzw/test/"
 
 value_size="8"
 benchmarks="dir_fillrandom" 
+#benchmarks="dir_fillrandom,stats,dir_readrandom,stats,dir_deleterandom,stats" 
+#benchmarks="inode_fillrandom,stats,inode_readrandom,stats,inode_deleterandom,stats"
 
 nums="1000000"  #
 #nums="10000000"  #1千万，0.32G
