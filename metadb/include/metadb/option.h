@@ -26,9 +26,9 @@ public:
     double INODE_HASHTABLE_TRIG_REHASH_TIMES = 1.5;  //inode存储的hashtable的node num 已经是capacity的INODE_HASHTABLE_TRIG_REHASH_TIMES倍，触发rehash
     
     string node_allocator_path = "/pmem0/test/node.pool";
-    uint64_t node_allocator_size = 20ULL * 1024 * 1024 * 1024;   //GB
+    uint64_t node_allocator_size = 80ULL * 1024 * 1024 * 1024;   //GB
     string file_allocator_path = "/pmem0/test/file.pool";
-    uint64_t file_allocator_size = 20ULL * 1024 * 1024 * 1024;   //GB
+    uint64_t file_allocator_size = 80ULL * 1024 * 1024 * 1024;   //GB
     uint32_t thread_pool_count = 2;
 
     Option() {}
