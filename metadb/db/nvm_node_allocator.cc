@@ -178,7 +178,7 @@ void NVMNodeAllocator::PrintBitmap(){
             temp.push_back('0' + bitmap_->get(i + j));
             if(j % 8 == 0) temp.push_back(' ');
         }
-        DBG_LOG("[bitmap] i:%lu %s", temp.c_str());
+        DBG_LOG("[bitmap] i:%lu %s", i, temp.c_str());
     }
 }
 
