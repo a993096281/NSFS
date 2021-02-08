@@ -93,7 +93,7 @@ void MetaDB::PrintFileAllocStats(std::string &stats){
 }
 
 void MetaDB::PrintAllStats(std::string &stats){
-    dir_db_->PrintDirStats(stats);
+    dir_db_->PrintStats(stats);
     inode_db_->PrintInodeStats(stats);
     if(node_allocator != nullptr) node_allocator->PrintNodeAllocatorStats(stats);
     if(file_allocator != nullptr) file_allocator->PrintFileAllocatorStats(stats);
