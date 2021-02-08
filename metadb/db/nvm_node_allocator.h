@@ -41,6 +41,7 @@ public:
 
     //统计
     void PrintNodeAllocatorStats(string &stats);
+    void PrintBitmap();
 
     void Sync(){
         if (is_pmem_)

@@ -40,6 +40,7 @@ NVMNodeAllocator::NVMNodeAllocator(const std::string path, uint64_t size){
 }
 
 NVMNodeAllocator::~NVMNodeAllocator(){
+    PrintBitmap();
     Sync();
     pmem_unmap(pmemaddr_, mapped_len_);
     delete bitmap_;
@@ -166,6 +167,19 @@ void NVMNodeAllocator::PrintNodeAllocatorStats(string &stats){
     snprintf(buf, sizeof(buf), "alloc:%.3f KB free:%.3f KB use:%.3f KB \n", alloc, free, use);
     stats.append(buf);
     stats.append("--------------------------\n");
+}
+
+void NVMNodeAllocator::PrintBitmap(){
+    uint64_t max = capacity_ / NODE_BASE_SIZE;
+    DBG_LOG("[bitmap] capacity:%u", bitmap_->get_capacity());
+    for(uint64_t i = 0; i < max; i += 64){
+        string temp;
+        for(uint64_t j = 0; j < 64 && (i + j) < max;j++){
+            temp.push_back('0' + bitmap_->get(i + j));
+            if(j % 8 == 0) temp.push_back(' ');
+        }
+        DBG_LOG("[bitmap] i:%lu %s", temp.c_str());
+    }
 }
 
 } // namespace name
