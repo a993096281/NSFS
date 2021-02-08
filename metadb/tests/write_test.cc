@@ -228,6 +228,11 @@ int main(int argc, char *argv[])
 
     //InodeRandomWrite(db);
 
+    std::string stats;
+    db->PrintAllStats(stats);
+    fprintf(stdout, "\n%s\n", stats.c_str());
+    fflush(stdout);
+
     delete db;
     return 0;
 }

@@ -38,7 +38,8 @@
 
 #
 test
-dbbench
+db_bench
+leveldb_bench
 tablefs
 tmp_push.sh
 
