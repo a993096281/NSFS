@@ -617,7 +617,7 @@ string DirHashTable::PrintVersionStats(HashVersion *version){
             res.append(second_hash->GetSecondHashTableStats(link_node_nums, index_node_nums, leaf_node_nums));
         } else {
             GetLinkListStats(entry->root, link_node_nums, index_node_nums, leaf_node_nums);
-            snprintf(buf, sizeof(buf), "version entry:%u is linklist link_nodes:%lu index_nodes:%lu leaf_nodes:%lu", i, \
+            snprintf(buf, sizeof(buf), "version entry:%u is linklist link_nodes:%lu index_nodes:%lu leaf_nodes:%lu \n", i, \
                     link_node_nums, index_node_nums, leaf_node_nums);
             res.append(buf);
         }
