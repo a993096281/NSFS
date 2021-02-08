@@ -1,7 +1,7 @@
 CC = gcc
 CXX = g++
 LDFLAGS = -pthread -g -lpmem -Wformat=0
-DEFS = 
+DEFS = -DNDEBUG
 CFLAGS = -I./include
 CFLAGS += $(DEFS)
 AR = ar

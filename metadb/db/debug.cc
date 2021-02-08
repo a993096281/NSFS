@@ -9,6 +9,10 @@
 
 namespace metadb {
 
+#ifndef NDEBUG
+
 DebugLogger* DebugLogger::log_ = nullptr;
+
+#endif
 
 } // namespace name

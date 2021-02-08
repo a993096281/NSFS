@@ -104,8 +104,8 @@ public:
                 }
                 if(ok >= need){  //申请成功
                     last_allocate_ = i + ok;
-                    for(int j = i; j < need; j++){
-                        bitmap_->set(j);
+                    for(int j = 0; j < need; j++){
+                        bitmap_->set(i + j);
                     }
                     free_blocks_ -= need;
                     return i * block_size;
@@ -131,8 +131,8 @@ public:
                 }
                 if(ok >= need){  //申请成功
                     last_allocate_ = i + ok;
-                    for(uint64_t j = i; j < need; j++){
-                        bitmap_->set(j);
+                    for(uint64_t j = 0; j < need; j++){
+                        bitmap_->set(i + j);
                     }
                     free_blocks_ -= need;
                     return i * block_size;
