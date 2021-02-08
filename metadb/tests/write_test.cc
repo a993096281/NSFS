@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
     option.file_allocator_path = "/home/lzw/test/file.pool";
     option.node_allocator_path = "/home/lzw/test/node.pool";
     option.file_allocator_size = 1 * 1024 * 1024;
-    option.node_allocator_path = 1 * 1024 * 1024;
+    option.node_allocator_size = 1 * 1024 * 1024;
     int ret = DB::Open(option, "testdb", &db);
     if(ret != 0){
         fprintf(stderr, "open db error, Test stop\n");

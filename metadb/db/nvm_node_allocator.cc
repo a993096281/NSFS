@@ -116,13 +116,13 @@ void NVMNodeAllocator::SetFreeIndex(uint64_t offset, uint64_t len){
     for(uint64_t i = 0; i < num; i++){
         bitmap_->clr(index + i);
     }
-    //DBG_LOG("Node Free: offset:%lu, len:%lu", offset, len);
+    DBG_LOG("Node Free: offset:%lu, len:%lu", offset, len);
 }
 
 void *NVMNodeAllocator::Allocate(uint64_t size){  
     uint64_t allocated = (size + NODE_BASE_SIZE - 1) & (~(NODE_BASE_SIZE - 1));  //保证按照NODE_BASE_SIZE分配
     uint64_t index = GetFreeIndex(allocated);
-    //DBG_LOG("Node Allocate: size:%lu allocated:%lu index:%lu offset:%lu", size, allocated, index, index * NODE_BASE_SIZE);
+    DBG_LOG("Node Allocate: size:%lu allocated:%lu index:%lu offset:%lu", size, allocated, index, index * NODE_BASE_SIZE);
     allocate_size.fetch_add(allocated, std::memory_order_relaxed);
     return static_cast<void *>(pmemaddr_ + index * NODE_BASE_SIZE);
 
