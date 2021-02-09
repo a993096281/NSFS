@@ -4,7 +4,7 @@ values_array=(128 256 512 1024 4096)
 test_all_size=40960000000   #40G
 #db="/home/lzw/ceshi"
 
-value_size="8"
+value_size="16"
 #benchmarks="dir_fillrandom,stats" 
 #benchmarks="dir_fillrandom,stats,dir_readrandom,stats,dir_deleterandom,stats" 
 benchmarks="inode_fillrandom,stats,inode_readrandom,stats,inode_deleterandom,stats"

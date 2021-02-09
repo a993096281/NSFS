@@ -3,16 +3,16 @@
 threads_array=(1 2 4 8 16 32)
 db="/pmem0/test/"
 
-value_size="8"
-benchmarks="dir_fillrandom,stats" 
-#benchmarks="dir_fillrandom,stats,dir_readrandom,stats,dir_deleterandom,stats" 
+value_size="16"
+#benchmarks="dir_fillrandom,stats" 
+benchmarks="dir_fillrandom,stats,dir_readrandom,stats,dir_deleterandom,stats" 
 #benchmarks="inode_fillrandom,stats,inode_readrandom,stats,inode_deleterandom,stats"
 
-nums="1000000"  #
-#nums="10000000"  #1千万，0.32G
+nums="100000000"  #
+#nums="100000000"  #
 
-reads="1000000"  #
-deletes="1000000" #
+reads="10000000"  #
+deletes="10000000" #
 updates="1000000" #
 threads="1"
 
