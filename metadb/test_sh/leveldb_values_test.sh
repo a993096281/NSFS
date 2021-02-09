@@ -9,6 +9,7 @@ value_size="16"
 #benchmarks="dir_fillrandom,stats" 
 #benchmarks="dir_fillrandom,stats,dir_readrandom,stats,dir_deleterandom,stats" 
 benchmarks="inode_fillrandom,stats,inode_readrandom,stats,inode_deleterandom,stats"
+#benchmarks="dir_rangewrite,stats,dir_rangeread,stats"
 
 nums="100000000"  #
 #nums="100000000"  #
@@ -52,6 +53,10 @@ function FILL_PARAMS() {
 
     if [ -n "$updates" ];then
         const_params=$const_params"--updates=$updates "
+    fi
+
+    if [ -n "$range_len" ];then
+        const_params=$const_params"--range_len=$range_len "
     fi
 
     if [ -n "$threads" ];then

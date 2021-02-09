@@ -41,6 +41,7 @@ static const char* FLAGS_benchmarks =
     //"inode_deleterandom,"
     //"dir_updaterandom,"
     //"inode_updaterandom,"
+    //"dir_rangewrite,"  //为了dir_rangeread测试写入数据
     //"dir_rangeread,"
 
 static const char* FLAGS_db_path = "/home/lzw/ceshi";  //暂时没用
@@ -56,6 +57,8 @@ static uint64_t FLAGS_deletes = 10000;
 
 //测试修改的数量，0代表等于FLAGS_nums；
 static uint64_t FLAGS_updates = 10000;
+
+static uint64_t FLAGS_range_len = 1000;
 
 // 测试线程个数，每个线程根据
 static int FLAGS_threads = 1;
@@ -366,6 +369,7 @@ void PrintHeader() {
     fprintf(stdout, "Reads:      %lu \n", (FLAGS_reads) ? FLAGS_reads : FLAGS_nums);
     fprintf(stdout, "Deletes:    %lu \n", (FLAGS_deletes) ? FLAGS_deletes : FLAGS_nums);
     fprintf(stdout, "Updates:    %lu \n", (FLAGS_updates) ? FLAGS_updates : FLAGS_nums);
+    fprintf(stdout, "RangeLen:   %lu \n", (FLAGS_range_len) ? FLAGS_range_len : FLAGS_nums);
     fprintf(stdout, "------------------------------------------------\n");
     fflush(stdout);
 }
@@ -701,6 +705,45 @@ void InodeRandomUpdate(ThreadState* thread){
     thread->stats.AddBytes(bytes);
 }
 
+void DirRangeWrite(ThreadState* thread){
+    uint32_t seed = thread->tid + 1000;
+    uint32_t seed2 = thread->tid + 2000;
+    uint64_t kv_nums = (FLAGS_nums / FLAGS_range_len) / FLAGS_threads;
+
+    leveldb::WriteOptions write_options;
+    if(FLAGS_sync){
+        write_options.sync = true;
+    }
+    char key[4096];
+    char *fname = new char[FLAGS_value_size + 1];
+    char value[8 + 1];
+    uint64_t id = 0;
+    uint64_t id2 = 0;
+    uint64_t bytes = 0;
+    leveldb::Status ret;
+    for(int i = 0; i < kv_nums; i++){
+        //id = Random64(&seed);
+        id = Random64(&seed);
+        for(uint64_t j = 0; j < FLAGS_range_len; j++){
+            id2 = Random64(&seed2);
+            snprintf(fname, FLAGS_value_size + 1, "%0*llx", FLAGS_value_size, id2);
+            snprintf(key, FLAGS_key_size + FLAGS_value_size + 1, "%0*lx%.*s", FLAGS_key_size, id, FLAGS_value_size, fname);
+            snprintf(value, 9, "%08lx", id2);
+
+            ret = thread->db->Put(write_options,leveldb::Slice(key, FLAGS_key_size + FLAGS_value_size), leveldb::Slice(value, 8));
+            if(!ret.ok()){
+                fprintf(stderr, "dir put error! %s\n", ret.ToString().c_str());
+                fflush(stderr);
+                exit(1);
+            }
+            bytes += (FLAGS_key_size + FLAGS_value_size + FLAGS_key_size);
+            thread->stats.FinishedOp(1, kBenchmarkWriteType);
+        }
+    }
+    delete fname;
+    thread->stats.AddBytes(bytes);
+}
+
 void DirRandomRange(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = (FLAGS_reads == 0) ? FLAGS_nums / FLAGS_threads : FLAGS_reads / FLAGS_threads;
@@ -714,8 +757,8 @@ void DirRandomRange(ThreadState* thread){
     leveldb::Status ret;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
-        id = Random64(&seed) % FLAGS_nums;
-        snprintf(key, FLAGS_key_size + 1, "%0*llu", FLAGS_key_size, id);
+        id = Random64(&seed);
+        snprintf(key, FLAGS_key_size + 1, "%0*llx", FLAGS_key_size, id);
 
         leveldb::Iterator *it = thread->db->NewIterator(read_options);
         if(it != nullptr){
@@ -795,6 +838,9 @@ void RunTest(){
         else if (strcmp(name, "inode_updaterandom") == 0){
             method = InodeRandomUpdate;
         }
+        else if (strcmp(name, "dir_rangewrite") == 0){
+            method = DirRangeWrite;
+        }
         else if (strcmp(name, "dir_rangeread") == 0){
             method = DirRandomRange;
         }
@@ -843,6 +889,8 @@ int main(int argc, char** argv){
             FLAGS_deletes = nums;
         } else if (sscanf(argv[i], "--updates=%llu%c", &nums, &junk) == 1) {
             FLAGS_updates = nums;
+        } else if (sscanf(argv[i], "--range_len=%llu%c", &nums, &junk) == 1) {
+            FLAGS_range_len = nums;
         } else if (sscanf(argv[i], "--threads=%d%c", &n, &junk) == 1) {
             FLAGS_threads = n;
         } else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {

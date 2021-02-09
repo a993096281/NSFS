@@ -39,6 +39,7 @@ static const char* FLAGS_benchmarks =
     //"inode_deleterandom,"
     //"dir_updaterandom,"
     //"inode_updaterandom,"
+    //"dir_rangewrite,"  //为了dir_rangeread测试写入数据
     //"dir_rangeread,"
 
 static const char* FLAGS_db_path = "/home/lzw/ceshi";  //暂时没用
@@ -54,6 +55,8 @@ static uint64_t FLAGS_deletes = 10000;
 
 //测试修改的数量，0代表等于FLAGS_nums；
 static uint64_t FLAGS_updates = 10000;
+
+static uint64_t FLAGS_range_len = 1000;
 
 // 测试线程个数，每个线程根据
 static int FLAGS_threads = 1;
@@ -372,6 +375,7 @@ void PrintHeader() {
     fprintf(stdout, "Reads:      %lu \n", (FLAGS_reads) ? FLAGS_reads : FLAGS_nums);
     fprintf(stdout, "Deletes:    %lu \n", (FLAGS_deletes) ? FLAGS_deletes : FLAGS_nums);
     fprintf(stdout, "Updates:    %lu \n", (FLAGS_updates) ? FLAGS_updates : FLAGS_nums);
+    fprintf(stdout, "RangeLen:   %lu \n", (FLAGS_range_len) ? FLAGS_range_len : FLAGS_nums);
     fprintf(stdout, "------------------------------------------------\n");
     fflush(stdout);
 }
@@ -693,6 +697,40 @@ void InodeRandomUpdate(ThreadState* thread){
     thread->stats.AddBytes(bytes);
 }
 
+void DirRangeWrite(ThreadState* thread){
+    uint32_t seed = thread->tid + 1000;
+    uint32_t seed2 = thread->tid + 2000;
+    uint64_t kv_nums = (FLAGS_nums / FLAGS_range_len) / FLAGS_threads;
+
+    inode_id_t key;
+    char *fname = new char[FLAGS_value_size + 1];
+    inode_id_t value;
+    uint64_t id = 0;
+    uint64_t id2 = 0;
+    uint64_t bytes = 0;
+    int ret = 0;
+    for(int i = 0; i < kv_nums; i++){
+        //id = Random64(&seed);
+        id = Random64(&seed);
+        key = id;
+        for(uint64_t j = 0; j < FLAGS_range_len; j++){
+            id2 = Random64(&seed2);
+            value = id2;
+            snprintf(fname, FLAGS_value_size + 1, "%0*llx", FLAGS_value_size, id2);
+            ret = thread->db->DirPut(key, Slice(fname, FLAGS_value_size), value);
+            if(ret != 0){
+                fprintf(stderr, "dir put error! key:%lu fname:%.*s value:%lu\n", key, FLAGS_value_size, fname, value);
+                fflush(stderr);
+                exit(1);
+            }
+            bytes += (FLAGS_key_size + FLAGS_value_size + FLAGS_key_size);
+            thread->stats.FinishedOp(1, kBenchmarkWriteType);
+        }
+    }
+    delete fname;
+    thread->stats.AddBytes(bytes);
+}
+
 void DirRandomRange(ThreadState* thread){
     uint32_t seed = thread->tid + 1000;
     uint64_t nums = (FLAGS_reads == 0) ? FLAGS_nums / FLAGS_threads : FLAGS_reads / FLAGS_threads;
@@ -705,7 +743,7 @@ void DirRandomRange(ThreadState* thread){
     int ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
-        id = Random64(&seed) % FLAGS_nums;
+        id = Random64(&seed);
         key = id;
         Iterator *it = thread->db->DirGetIterator(key);
         if(it != nullptr){
@@ -785,6 +823,9 @@ void RunTest(){
         else if (strcmp(name, "inode_updaterandom") == 0){
             method = InodeRandomUpdate;
         }
+        else if (strcmp(name, "dir_rangewrite") == 0){
+            method = DirRangeWrite;
+        }
         else if (strcmp(name, "dir_rangeread") == 0){
             method = DirRandomRange;
         }
@@ -833,6 +874,8 @@ int main(int argc, char** argv){
             FLAGS_deletes = nums;
         } else if (sscanf(argv[i], "--updates=%llu%c", &nums, &junk) == 1) {
             FLAGS_updates = nums;
+        } else if (sscanf(argv[i], "--range_len=%llu%c", &nums, &junk) == 1) {
+            FLAGS_range_len = nums;
         } else if (sscanf(argv[i], "--threads=%d%c", &n, &junk) == 1) {
             FLAGS_threads = n;
         } else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {
