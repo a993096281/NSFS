@@ -110,7 +110,7 @@ public:
                     free_blocks_ -= need;
                     return i * block_size;
                 }
-                else if((i + ok) > max){  //地址超过
+                else if((i + ok) >= max){  //地址超过
                     last_allocate_ = 0;
                     break;
                 }
@@ -137,7 +137,7 @@ public:
                     free_blocks_ -= need;
                     return i * block_size;
                 }
-                else if((i + ok) > max){  //地址超过
+                else if((i + ok) >= max){  //地址超过
                     last_allocate_ = 0;
                     break;
                 }

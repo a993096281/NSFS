@@ -67,7 +67,7 @@ uint64_t NVMNodeAllocator::GetFreeIndex(uint64_t size){
                 //mu_.Unlock();
                 return i;
             }
-            else if((i + ok) > max){  //地址超过
+            else if((i + ok) >= max){  //地址超过
                 last_allocate_ = START_ALLOCATOR_INDEX;
                 break;
             }
@@ -94,7 +94,7 @@ uint64_t NVMNodeAllocator::GetFreeIndex(uint64_t size){
                 //mu_.Unlock();
                 return i;
             }
-            else if((i + ok) > max){  //地址超过
+            else if((i + ok) >= max){  //地址超过
                 last_allocate_ = START_ALLOCATOR_INDEX;
                 break;
             }
