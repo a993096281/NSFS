@@ -123,12 +123,12 @@ fi
 RUN_ONE_TEST() {
     const_params=""
     FILL_PARAMS
-    cmd="$bench_file_path $const_params >>out_threads_$threads.out 2>&1"
+    cmd="$bench_file_path $const_params >>out_values_$value_size.out 2>&1"
     if [ "$1" == "numa" ];then
-        cmd="numactl -N 1 $bench_file_path $const_params >>out_threads_$threads.out 2>&1"
+        cmd="numactl -N 1 $bench_file_path $const_params >>out_values_$value_size.out 2>&1"
     fi
 
-    echo $cmd >out_threads_$threads.out
+    echo $cmd >out_values_$value_size.out
     echo $cmd
     eval $cmd
 
@@ -150,11 +150,7 @@ RUN_ALL_TEST() {
     done
 }
 
-if [ -n "$1" ];then    #后台运行
-nohup RUN_ALL_TEST $2 >>out.out 2>&1 &
-else
-RUN_ALL_TEST
-fi
+RUN_ALL_TEST $1
 
 
 

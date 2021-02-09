@@ -121,9 +121,5 @@ RUN_ALL_TEST() {
     done
 }
 
-if [ -n "$1" ];then    #后台运行
-nohup RUN_ALL_TEST $2 >>out.out 2>&1 &
-else
-RUN_ALL_TEST
-fi
+RUN_ALL_TEST $1
 
