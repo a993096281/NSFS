@@ -762,7 +762,7 @@ void DirRandomRange(ThreadState* thread){
 
         leveldb::Iterator *it = thread->db->NewIterator(read_options);
         if(it != nullptr){
-            for(it->Seek(leveldb::Slice(key, FLAGS_key_size)); it->Valid() && memcmp(key, it->value().data(), FLAGS_key_size) == 0; it->Next()){
+            for(it->Seek(leveldb::Slice(key, FLAGS_key_size)); it->Valid() && memcmp(key, it->key().data(), FLAGS_key_size) == 0; it->Next()){
                 found++;
             }
             delete it;
