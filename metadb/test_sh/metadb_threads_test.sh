@@ -1,5 +1,7 @@
 #! /bin/sh
 
+threads_array=(1 2 4 8 16 32)
+
 #db="/home/lzw/ceshi"
 
 value_size="8"
@@ -22,7 +24,6 @@ histogram="1"
 
 #k_thread_pool_count="4"
 
-const_params=""
 
 function FILL_PARAMS() {
     if [ -n "$db" ];then
@@ -119,14 +120,41 @@ echo "Error:${bench_file_path} or $(dirname $PWD )/db_bench not find!"
 exit 1
 fi
 
-FILL_PARAMS 
+RUN_ONE_TEST() {
+    const_params=""
+    FILL_PARAMS
+    cmd="$bench_file_path $const_params >>out_threads_$threads.out 2>&1"
+    if [ "$1" == "numa" ];then
+        cmd="numactl -N 1 $bench_file_path $const_params >>out_threads_$threads.out 2>&1"
+    fi
 
-cmd="$bench_file_path $const_params "
+    echo $cmd >out_threads_$threads.out
+    echo $cmd
+    eval $cmd
+
+    if [ $? -ne 0 ];then
+        exit 1
+    fi
+}
+
+RUN_ALL_TEST() {
+    for temp in ${threads_array[@]}; do
+        threads="$temp"
+
+        RUN_ONE_TEST $1
+        if [ $? -ne 0 ];then
+            exit 1
+        fi
+        sleep 5
+    done
+}
 
 if [ -n "$1" ];then    #后台运行
-cmd="nohup $bench_file_path $const_params >>out.out 2>&1 &"
-echo $cmd >out.out
+nohup RUN_ALL_TEST $2 >>out.out 2>&1 &
+else
+RUN_ALL_TEST
 fi
 
-echo $cmd
-eval $cmd
+
+
+

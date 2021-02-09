@@ -22,7 +22,7 @@ histogram="1"
 
 const_params=""
 
-function FILL_PATAMS() {
+function FILL_PARAMS() {
     if [ -n "$db" ];then
         const_params=$const_params"--db=$db "
     fi
@@ -117,7 +117,7 @@ echo "Error:${bench_file_path} or $(dirname $PWD )/db_bench not find!"
 exit 1
 fi
 
-FILL_PATAMS 
+FILL_PARAMS 
 
 cmd="$bench_file_path $const_params "
 

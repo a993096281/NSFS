@@ -1,11 +1,13 @@
 #! /bin/sh
 
+values_array=(128 256 512 1024 4096)
+test_all_size=40960000000   #40G
 #db="/home/lzw/ceshi"
 
 value_size="8"
 #benchmarks="dir_fillrandom,stats" 
-benchmarks="dir_fillrandom,stats,dir_readrandom,stats,dir_deleterandom,stats" 
-#benchmarks="inode_fillrandom,stats,inode_readrandom,stats,inode_deleterandom,stats"
+#benchmarks="dir_fillrandom,stats,dir_readrandom,stats,dir_deleterandom,stats" 
+benchmarks="inode_fillrandom,stats,inode_readrandom,stats,inode_deleterandom,stats"
 
 k_node_allocator_path="/pmem0/test/node.pool"
 k_file_allocator_path="/pmem0/test/file.pool"
@@ -22,7 +24,6 @@ histogram="1"
 
 #k_thread_pool_count="4"
 
-const_params=""
 
 function FILL_PARAMS() {
     if [ -n "$db" ];then
@@ -119,14 +120,42 @@ echo "Error:${bench_file_path} or $(dirname $PWD )/db_bench not find!"
 exit 1
 fi
 
-FILL_PARAMS 
+RUN_ONE_TEST() {
+    const_params=""
+    FILL_PARAMS
+    cmd="$bench_file_path $const_params >>out_threads_$threads.out 2>&1"
+    if [ "$1" == "numa" ];then
+        cmd="numactl -N 1 $bench_file_path $const_params >>out_threads_$threads.out 2>&1"
+    fi
 
-cmd="$bench_file_path $const_params "
+    echo $cmd >out_threads_$threads.out
+    echo $cmd
+    eval $cmd
+
+    if [ $? -ne 0 ];then
+        exit 1
+    fi
+}
+
+RUN_ALL_TEST() {
+    for temp in ${values_array[@]}; do
+        value_size="$temp"
+        nums="`expr $test_all_size / $value_size`"
+
+        RUN_ONE_TEST $1
+        if [ $? -ne 0 ];then
+            exit 1
+        fi
+        sleep 5
+    done
+}
 
 if [ -n "$1" ];then    #后台运行
-cmd="nohup $bench_file_path $const_params >>out.out 2>&1 &"
-echo $cmd >out.out
+nohup RUN_ALL_TEST $2 >>out.out 2>&1 &
+else
+RUN_ALL_TEST
 fi
 
-echo $cmd
-eval $cmd
+
+
+
