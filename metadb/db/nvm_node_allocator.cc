@@ -68,7 +68,6 @@ uint64_t NVMNodeAllocator::GetFreeIndex(uint64_t size){
                 return i;
             }
             else if((i + ok) >= max){  //地址超过
-                last_allocate_ = START_ALLOCATOR_INDEX;
                 break;
             }
             else{  //申请失败
@@ -77,7 +76,7 @@ uint64_t NVMNodeAllocator::GetFreeIndex(uint64_t size){
         }
         i++;
     }
-
+    last_allocate_ = START_ALLOCATOR_INDEX;
     i = last_allocate_;
 
     for(; i < max;){
@@ -95,7 +94,6 @@ uint64_t NVMNodeAllocator::GetFreeIndex(uint64_t size){
                 return i;
             }
             else if((i + ok) >= max){  //地址超过
-                last_allocate_ = START_ALLOCATOR_INDEX;
                 break;
             }
             else{  //申请失败

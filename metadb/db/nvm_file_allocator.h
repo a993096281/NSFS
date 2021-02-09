@@ -111,7 +111,6 @@ public:
                     return i * block_size;
                 }
                 else if((i + ok) >= max){  //地址超过
-                    last_allocate_ = 0;
                     break;
                 }
                 else{  //申请失败
@@ -120,7 +119,7 @@ public:
             }
             i++;
         }
-
+        last_allocate_ = 0;
         i = last_allocate_;
 
         for(; i < max;){
@@ -138,7 +137,6 @@ public:
                     return i * block_size;
                 }
                 else if((i + ok) >= max){  //地址超过
-                    last_allocate_ = 0;
                     break;
                 }
                 else{  //申请失败
