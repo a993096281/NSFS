@@ -727,7 +727,7 @@ void DirRangeWrite(ThreadState* thread){
         for(uint64_t j = 0; j < FLAGS_range_len; j++){
             id2 = Random64(&seed2);
             snprintf(fname, FLAGS_value_size + 1, "%0*llx", FLAGS_value_size, id2);
-            snprintf(key, FLAGS_key_size + FLAGS_value_size + 1, "%0*lx%.*s", FLAGS_key_size, id, FLAGS_value_size, fname);
+            snprintf(key, FLAGS_key_size + FLAGS_value_size + 1, "%0*llx%.*s", FLAGS_key_size, id, FLAGS_value_size, fname);
             snprintf(value, 9, "%08lx", id2);
 
             ret = thread->db->Put(write_options,leveldb::Slice(key, FLAGS_key_size + FLAGS_value_size), leveldb::Slice(value, 8));
