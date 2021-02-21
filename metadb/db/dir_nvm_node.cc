@@ -267,7 +267,7 @@ int LinkNodeTranBptreeDo(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cu
                 new_node->CopyBy(cur);
                 new_node->SetBufNodrain(0, buf, len);
                 new_node->SetBufNodrain(len, next_node->buf, next_node->len);
-                new_node->SetNumAndLenNodrain(cur->num +next_node->num, len - next_node->len);
+                new_node->SetNumAndLenNodrain(cur->num + next_node->num, len + next_node->len);
                 new_node->SetMaxkeyNodrain(next_node->max_key);
                 new_node->SetNextNodrain(next_node->next);
                 new_node->Flush();
