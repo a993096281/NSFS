@@ -75,7 +75,7 @@ install-headers:
 		install -d $(INSTALL_PATH)/include/$(INCLUDE_PATH)/$$header_dir; \
 	done
 	for header in `find "include/$(INCLUDE_PATH)/" -type f -name "*.h" | sed 's/^include\///g' `; do \
-		install -C -m 644 include/$$header $(INSTALL_PATH)/include/$(INCLUDE_PATH)/$$header; \
+		install -C -m 644 include/$$header $(INSTALL_PATH)/include/$$header; \
 	done
 
 install-static: $(LIBRARY) install-headers 
