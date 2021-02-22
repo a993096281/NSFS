@@ -71,10 +71,10 @@ INCLUDE_PATH := metadb
 install-headers:
 	install -d $(INSTALL_PATH)/lib
 	install -d $(INSTALL_PATH)/include/$(INCLUDE_PATH)
-	for header_dir in `find "include" -type d | sed '1d' | sed 's/^include\///g' `; do \
+	for header_dir in `find "include/$(INCLUDE_PATH)/" -type d | sed '1d' | sed 's/^include\///g' `; do \
 		install -d $(INSTALL_PATH)/include/$(INCLUDE_PATH)/$$header_dir; \
 	done
-	for header in `find "include/" -type f -name "*.h" | sed 's/^include\///g' `; do \
+	for header in `find "include/$(INCLUDE_PATH)/" -type f -name "*.h" | sed 's/^include\///g' `; do \
 		install -C -m 644 include/$$header $(INSTALL_PATH)/include/$(INCLUDE_PATH)/$$header; \
 	done
 
