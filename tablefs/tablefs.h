@@ -7,7 +7,7 @@
 #ifndef _TABLEFS_TABLEFS_H_
 #define _TABLEFS_TABLEFS_H_
 
-#include <fuse.h>
+#include <fuse3/fuse.h>
 #include "inode_format.h"
 #include "adaptor.h"
 #include "config.h"
