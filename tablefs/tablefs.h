@@ -18,6 +18,7 @@
 
 namespace tablefs {
 
+using namespace std;
 class TableFS {
 public :
     TableFS(const kvfs_args & arg);
@@ -77,18 +78,13 @@ protected:
     tfs_inode_val_t InitInodeValue(tfs_inode_t inum, mode_t mode, dev_t dev, leveldb::Slice filename);
     std::string InitInodeValue(const std::string& old_value, leveldb::Slice filename);
                 
-    
     bool ParentPathLookup(const char* path, tfs_meta_key_t &key, tfs_inode_t &inode_in_search, const char* &lastdelimiter);
 
-    inline bool PathLookup(const char *path,
-                         tfs_meta_key_t &key,
-                         leveldb::Slice &filename);
+    inline bool PathLookup(const char *path, tfs_meta_key_t &key, leveldb::Slice &filename);
 
-    inline bool PathLookup(const char *path,
-                         tfs_meta_key_t &key);
+    inline bool PathLookup(const char *path, tfs_meta_key_t &key);
 
-    kvfs_file_handle * InitFileHandle(const char * path , struct fuse_file_info * fi,
-            const kvfs_inode_meta_key & key , const std::string & value );
+    kvfs_file_handle * InitFileHandle(const char * path, struct fuse_file_info * fi, const tfs_meta_key_t & key , const std::string & value );
     string GetDiskFilePath(const tfs_meta_key_t &key, tfs_inode_t inode_id);
     int OpenDiskFile(const tfs_meta_key_t &key, const tfs_inode_header* iheader, int flags);
     int TruncateDiskFile(const tfs_meta_key_t &key, tfs_inode_t inode_id, off_t new_size);

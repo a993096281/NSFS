@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include "tablefs.h"
-#include <fuse.h>
 
 using namespace tablefs;
 

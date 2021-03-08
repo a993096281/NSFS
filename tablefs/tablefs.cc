@@ -158,6 +158,7 @@ std::string TableFS::InitInodeValue(const std::string& old_value,
                     filename.data(), filename.size()+1);
   header.namelen = filename.size();
   UpdateInodeHeader(new_value, header);
+  return new_value;
 }
 
 TableFS::TableFS(const kvfs_args & args) : args_(args), db_(nullptr),config_(nullptr),use_fuse(false)
@@ -178,7 +179,7 @@ TableFS::~TableFS(){
   db_->Cleanup();
   delete db_;
   delete config_;
-  
+
 }
 
 void TableFS::FreeInodeValue(tfs_inode_val_t &ival) {
@@ -325,7 +326,7 @@ int TableFS::GetAttr(const char *path, struct stat *statbuf) {
     }
     int ret = 0;
     std::string value;
-    ret = db_->Get(key.ToSlice(), value));
+    ret = db_->Get(key.ToSlice(), value);
     if (ret == 0) {
         *statbuf = *(GetAttribute(value));
         return 0;
@@ -368,15 +369,6 @@ kvfs_file_handle * TableFS::InitFileHandle(const char * path, struct fuse_file_i
        else  // new file
        {
 
-           kvfs_inode_value value ;
-           value.header.type = KVFS_TYPE_SMALL_FILE;
-           value.header.path_name_len = strlen(path);
-           value.path_name = new char [value.header.path_name_len];
-           strcpy(value.path_name,path);
-           handle->fd = -1;
-           handle->value = value.ToString();
-           //mode_t default_mode = ;
-           //InitStat(value.header.fstat,0,,);
            
        }
        fi->fh = reinterpret_cast <uint64_t >(handle);
@@ -411,7 +403,7 @@ int TableFS::Read(const char * path,char * buf , size_t size ,off_t offset ,stru
     int ret = 0;
     if (header->has_blob > 0) {  //大文件
       if (handle->fd < 0) {
-        handle->fd = OpenDiskFile(key, header, handle->flag);
+        handle->fd = OpenDiskFile(key, header, handle->flags);
         if (handle->fd < 0)
           ret = -EBADF;
       }
@@ -464,7 +456,7 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
         ret = pwrite(handle->fd, buf, size, offset);
       }
       if (ret >= 0 && has_larger_size > 0 ) {
-        tfs_inode_header new_iheader = *GetInodeHeader(handle->value_);
+        tfs_inode_header new_iheader = *GetInodeHeader(handle->value);
         new_iheader.fstat.st_size = offset + size;
         UpdateInodeHeader(handle->value, new_iheader);
         int res = db_->Put(handle->key.ToSlice(), handle->value);
@@ -480,10 +472,11 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
       char * buffer = new char[ offset + size];
 
       const char * inline_data = handle->value.data() + TFS_INODE_HEADER_SIZE + header->namelen + 1;
+      int inline_data_size = handle->value.size() - (TFS_INODE_HEADER_SIZE + header->namelen + 1);
       
-      memcpy(buffer,inline_data,header->value_size);
+      memcpy(buffer, inline_data, inline_data_size);
       //1 . write data to buffer
-      memcpy (buffer+ offset , buf,size);
+      memcpy (buffer + offset , buf, size);
       //2. write buffer to file
       int fd = OpenDiskFile(key, header, handle->flags);
       if(fd < 0){
@@ -518,6 +511,7 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
     }
     return ret;
   }
+  return ret;
 }
 
 int TableFS::Truncate(const char * path ,off_t offset){
@@ -601,6 +595,7 @@ int TableFS::Fsync(const char * path,int datasync ,struct fuse_file_info * fi){
 }
 int TableFS::Release(const char * path ,struct fuse_file_info * fi){
   kvfs_file_handle* handle = reinterpret_cast<kvfs_file_handle*>(fi->fh);
+  tfs_meta_key_t key = handle->key;
 
   if (handle->mode == INODE_WRITE) {
     const tfs_stat_t *value = GetAttribute(handle->value);
@@ -637,7 +632,7 @@ int TableFS::Readlink(const char * path ,char * buf,size_t size){
   
   std::string result;
   int ret = 0;
-  int ret = db_->Get(key.ToSlice(), result);
+  ret = db_->Get(key.ToSlice(), result);
   if(ret == 0){
     size_t data_size = GetInlineData(result, buf, 0, size-1);
     buf[data_size] = '\0';
@@ -661,7 +656,7 @@ int TableFS::Unlink(const char * path){
   }
   std::string value;
   int ret = 0;
-  int ret = db_->Get(key.ToSlice(), value);
+  ret = db_->Get(key.ToSlice(), value);
   if(ret == 0){
     const tfs_inode_header *iheader = reinterpret_cast<const tfs_inode_header *>(value.data());
     if(iheader->has_blob > 0){
@@ -735,7 +730,7 @@ int TableFS::OpenDir(const char * path,struct fuse_file_info *fi){
   }
   std::string value;
   int ret = 0;
-  int ret = db_->Get(key.ToSlice(), value);
+  ret = db_->Get(key.ToSlice(), value);
   if(ret == 0){
     kvfs_file_handle * handle = new kvfs_file_handle(path);
     handle->fd = -1;
@@ -764,10 +759,12 @@ int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t 
               childkey);
   Iterator* iter = db_->NewIterator();
   if (filler(buf, ".", NULL, 0) < 0) {
-    return FSError("Cannot read a directory");
+    KVFS_LOG("filler . error\n");
+    return -errno;
   }
   if (filler(buf, "..", NULL, 0) < 0) {
-    return FSError("Cannot read a directory");
+    KVFS_LOG("filler .. error\n");
+    return -errno;
   }
   for (iter->Seek(childkey.ToSlice());
        iter->Valid() && IsKeyInDir(iter->key(), childkey);
@@ -813,7 +810,7 @@ int TableFS::Rename(const char *new_path,const char * old_path){
 
   std::string old_value;
   int ret = 0;
-  int ret = db_->Get(old_key.ToSlice(), old_value);
+  ret = db_->Get(old_key.ToSlice(), old_value);
   if(ret == 0){
     const tfs_inode_header *iheader = reinterpret_cast<const tfs_inode_header *>(old_value.data());
     std::string new_value = InitInodeValue(old_value, filename);
@@ -848,7 +845,7 @@ int TableFS::Chmod(const char * path , mode_t mode){
   }
   std::string value;
   int ret = 0;
-  int ret = db_->Get(key.ToSlice(), value);
+  ret = db_->Get(key.ToSlice(), value);
   if(ret == 0){
     kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(path);
     string *mu_value = nullptr;
@@ -882,7 +879,7 @@ int TableFS::Chown(const char * path, uid_t uid,gid_t gid){
   }
   std::string value;
   int ret = 0;
-  int ret = db_->Get(key.ToSlice(), value);
+  ret = db_->Get(key.ToSlice(), value);
   if(ret == 0){
     kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(path);
     string *mu_value = nullptr;
@@ -916,7 +913,7 @@ int TableFS::UpdateTimens(const char * path ,const struct timespec tv[2]){
   }
   std::string value;
   int ret = 0;
-  int ret = db_->Get(key.ToSlice(), value);
+  ret = db_->Get(key.ToSlice(), value);
   if(ret == 0){
     kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(path);
     string *mu_value = nullptr;
