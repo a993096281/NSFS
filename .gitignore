@@ -40,9 +40,11 @@
 test
 db_bench
 leveldb_bench
-tablefs
+tablefs_main
 tmp_push.sh
 
 #VS 
 *.DS_Store
 .vscode
+
+
