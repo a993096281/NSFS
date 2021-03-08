@@ -73,7 +73,7 @@ int wrap_releasedir(const char *path, struct fuse_file_info *fileInfo) {
       return fs->ReleaseDir(path, fileInfo);
 }
 void* wrap_init(struct fuse_conn_info *conn, struct fuse_config *cfg) {
-      return fs->Init(conn);
+      return fs->Init(conn, cfg);
 }
 int wrap_access(const char *path, int mask) {
       return fs->Access(path, mask);
@@ -129,8 +129,8 @@ int main(int argc , char * argv[])
     char fuse_mount_dir[100];
     strcpy(fuse_mount_dir , mountdir.c_str());
     fuse_argv[fuse_argc++] = fuse_mount_dir;
-
-    fuse_argv[fuse_argc++] = "-s";
+    char fuse_opt_s[20] = "-s";
+    fuse_argv[fuse_argc++] = fuse_opt_s;
 
     kvfs_operations.init = wrap_init;
     kvfs_operations.getattr = wrap_getattr;
