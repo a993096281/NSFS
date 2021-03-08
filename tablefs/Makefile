@@ -17,6 +17,8 @@ LIBOBJECTS = $(LIB_SOURCES:.cc=.o)
 
 TARGET_OBJS = $(LIB_SOURCES:.cc=)
 
+FUSE_LIBRARY = `pkg-config fuse --cflags --libs`
+
 LIBRARY = libtablefs.a
 
 LEVELDB_LIBRARY = ../lib/leveldb_v1.20/out-static/libleveldb.a
@@ -42,4 +44,4 @@ $(LIBRARY) : $(LIBOBJECTS)
 	$(AR) $(ARFLAGS) $@ $^
 
 tablefs_main: clean $(LIBOBJECTS)
-	$(CXX) $(CFLAGS) tablefs_main.cc $(LIBOBJECTS) $(LEVELDB_INCLUDE) $(LEVELDB_LIBRARY) -o tablefs_main $(LDFLAGS);
+	$(CXX) $(CFLAGS) tablefs_main.cc $(LIBOBJECTS) $(LEVELDB_INCLUDE) $(LEVELDB_LIBRARY) $(FUSE_LIBRARY) -o tablefs_main $(LDFLAGS);
