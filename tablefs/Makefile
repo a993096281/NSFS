@@ -18,7 +18,7 @@ LIBOBJECTS = $(LIB_SOURCES:.cc=.o)
 TARGET_OBJS = $(LIB_SOURCES:.cc=)
 
 FUSE_INCLUDE = `pkg-config fuse3 --cflags`
-FUSE_LIBRARY = `pkg-config fuse3 --cflags`
+FUSE_LIBRARY = `pkg-config fuse3 --libs`
 
 
 LIBRARY = libtablefs.a
