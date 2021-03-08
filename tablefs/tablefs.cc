@@ -749,7 +749,7 @@ int TableFS::OpenDir(const char * path,struct fuse_file_info *fi){
   
 }
 
-int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t offset ,struct fuse_file_info * fi){
+int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t offset ,struct fuse_file_info * fi, int flag){
   kvfs_file_handle * handle = reinterpret_cast <kvfs_file_handle *>(fi->fh);
   tfs_meta_key_t childkey;
   int ret = 0;
@@ -758,11 +758,11 @@ int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t 
               (child_inumber == ROOT_INODE_ID) ? 1 : 0,
               childkey);
   Iterator* iter = db_->NewIterator();
-  if (filler(buf, ".", NULL, 0) < 0) {
+  if (filler(buf, ".", NULL, 0, 0) < 0) {
     KVFS_LOG("filler . error\n");
     return -errno;
   }
-  if (filler(buf, "..", NULL, 0) < 0) {
+  if (filler(buf, "..", NULL, 0, 0) < 0) {
     KVFS_LOG("filler .. error\n");
     return -errno;
   }
@@ -773,7 +773,7 @@ int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t 
     if (name_buffer[0] == '\0') {
         continue;
     }
-    if (filler(buf, name_buffer, NULL, 0) < 0) {
+    if (filler(buf, name_buffer, NULL, 0, 0) < 0) {
       ret = -1;
     }
     if (ret < 0) {

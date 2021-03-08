@@ -13,7 +13,7 @@
 #include "config.h"
 #include "leveldb/db.h"
 
-#define FUSE_USE_VERSION 29
+#define FUSE_USE_VERSION 32
 
 
 namespace tablefs {
@@ -55,7 +55,7 @@ public :
     int OpenDir(const char * path,struct fuse_file_info *fi);
 
     int ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,
-            off_t offset ,struct fuse_file_info * fi);
+            off_t offset ,struct fuse_file_info * fi, int flag);
 
     int ReleaseDir(const char * path,struct fuse_file_info * fi);
 
