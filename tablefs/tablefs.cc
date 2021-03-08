@@ -172,7 +172,7 @@ TableFS::TableFS(const kvfs_args & args) : args_(args), db_(nullptr),config_(nul
     KVFS_LOG("init leveldb adaptor ..\n");
     db_ = new DBAdaptor();
     db_->Init(config_->GetMetaDir());
-
+    cfg_ = nullptr;
 }
 
 TableFS::~TableFS(){
