@@ -56,7 +56,7 @@ public :
     int OpenDir(const char * path,struct fuse_file_info *fi);
 
     int ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,
-            off_t offset ,struct fuse_file_info * fi, enum fuse_readdir_flags flag flag);
+            off_t offset ,struct fuse_file_info * fi, enum fuse_readdir_flags flag);
 
     int ReleaseDir(const char * path,struct fuse_file_info * fi);
 
