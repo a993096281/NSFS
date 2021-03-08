@@ -13,6 +13,8 @@
 #include "config.h"
 #include "leveldb/db.h"
 
+#define FUSE_USE_VERSION 29
+
 
 namespace tablefs {
 

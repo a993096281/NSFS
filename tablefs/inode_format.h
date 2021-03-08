@@ -12,9 +12,8 @@
 #include <map>
 #include <unordered_map>
 
-#include "rocksdb/db.h"
+#include "leveldb/db.h"
 
-#include "util/hash_function.hpp"
 
 
 
@@ -44,7 +43,7 @@ struct tfs_meta_key_t
         return std::string((const char *)this,sizeof(tfs_meta_key_t));
     }
     leveldb::Slice ToSlice() const {
-        return rocksdb::Slice((const char *)this,sizeof(tfs_meta_key_t));
+        return leveldb::Slice((const char *)this,sizeof(tfs_meta_key_t));
     }
 };
 
