@@ -7,13 +7,14 @@
 #ifndef _TABLEFS_TABLEFS_H_
 #define _TABLEFS_TABLEFS_H_
 
+#define FUSE_USE_VERSION 35
+
 #include <fuse3/fuse.h>
 #include "inode_format.h"
 #include "adaptor.h"
 #include "config.h"
 #include "leveldb/db.h"
 
-#define FUSE_USE_VERSION 32
 
 
 namespace tablefs {
