@@ -110,8 +110,8 @@ void TableFS::InitStat(tfs_stat_t &statbuf,
     statbuf.st_dev = dev;
 
     if (use_fuse) {
-        statbuf.st_gid = fuse_get_context()->gid;
-        statbuf.st_uid = fuse_get_context()->uid;
+        statbuf.st_gid = cfg_->gid;
+        statbuf.st_uid = cfg_->uid;
     } else {
         statbuf.st_gid = 0;
         statbuf.st_uid = 0;
@@ -290,6 +290,7 @@ ssize_t TableFS::MigrateDiskFileToBuffer(const tfs_meta_key_t &key, tfs_inode_t 
 
 void* TableFS::Init(struct fuse_conn_info *conn, struct fuse_config *cfg){
     KVFS_LOG("kvfs init .. \n");
+    cfg_ = cfg;
     if(conn != nullptr)
     {
         KVFS_LOG("use fuse .. true");

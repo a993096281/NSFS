@@ -96,8 +96,9 @@ protected:
     DBAdaptor * db_;
     KVFSConfig * config_;
     kvfs_args args_;
- //   rocksdb :: DB * db;
     bool use_fuse;
+
+    struct fuse_config *cfg_;
 
 };
 
