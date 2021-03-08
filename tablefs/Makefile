@@ -1,6 +1,6 @@
 CC = gcc
 CXX = g++
-LDFLAGS = -pthread -g -Wformat=0 -lfuse
+LDFLAGS = -pthread -g -Wformat=0
 DEFS = -DNDEBUG
 CFLAGS += $(DEFS)
 AR = ar
