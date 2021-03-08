@@ -34,7 +34,7 @@ clean:
 
 $(LIBOBJECTS): 
 	for sou_file in $(TARGET_OBJS) ; do \
-	$(CXX) $(CFLAGS) $(LDFLAGS) $(LEVELDB_INCLUDE) $(LEVELDB_LIBRARY) -c $$sou_file.cc -o $$sou_file.o; \
+	$(CXX) $(CFLAGS) $(LDFLAGS) $(LEVELDB_INCLUDE) -c $$sou_file.cc -o $$sou_file.o; \
 	done;
 
 $(LIBRARY) : $(LIBOBJECTS)
