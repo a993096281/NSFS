@@ -17,7 +17,9 @@ LIBOBJECTS = $(LIB_SOURCES:.cc=.o)
 
 TARGET_OBJS = $(LIB_SOURCES:.cc=)
 
-FUSE_LIBRARY = `pkg-config fuse --cflags --libs`
+FUSE_INCLUDE = `pkg-config fuse3 --cflags`
+FUSE_LIBRARY = `pkg-config fuse3 --cflags`
+
 
 LIBRARY = libtablefs.a
 
@@ -36,7 +38,7 @@ clean:
 
 $(LIBOBJECTS): 
 	for sou_file in $(TARGET_OBJS) ; do \
-	$(CXX) $(CFLAGS) $(LDFLAGS) $(LEVELDB_INCLUDE) -c $$sou_file.cc -o $$sou_file.o; \
+	$(CXX) $(CFLAGS) $(LDFLAGS) $(LEVELDB_INCLUDE) $(FUSE_INCLUDE) -c $$sou_file.cc -o $$sou_file.o; \
 	done;
 
 $(LIBRARY) : $(LIBOBJECTS)
@@ -44,4 +46,4 @@ $(LIBRARY) : $(LIBOBJECTS)
 	$(AR) $(ARFLAGS) $@ $^
 
 tablefs_main: clean $(LIBOBJECTS)
-	$(CXX) $(CFLAGS) tablefs_main.cc $(LIBOBJECTS) $(LEVELDB_INCLUDE) $(LEVELDB_LIBRARY) $(FUSE_LIBRARY) -o tablefs_main $(LDFLAGS);
+	$(CXX) $(CFLAGS) tablefs_main.cc $(LIBOBJECTS) $(LEVELDB_INCLUDE) $(LEVELDB_LIBRARY) $(FUSE_INCLUDE) $(FUSE_LIBRARY) -o tablefs_main $(LDFLAGS);
