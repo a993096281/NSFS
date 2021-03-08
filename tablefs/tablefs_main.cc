@@ -1,17 +1,17 @@
-#define FUSE_USE_VERSION 29
 
 #include <stdio.h>
 #include <iostream>
+#include <unistd.h>
 
 #include "tablefs.h"
 
 using namespace tablefs;
 
-static TableFS * fs;
+static TableFS *fs;
 
-int wrap_getattr(const char * path,struct stat * statbuf)
+int wrap_getattr(const char * path,struct stat * statbuf, struct fuse_file_info *fi)
 {
-    return fs->GetAttr(path,statbuf);
+    return fs->GetAttr(path,statbuf, fi);
 }
 int wrap_readlink(const char * path ,char * link , size_t size)
 {
@@ -37,19 +37,19 @@ int wrap_symlink(const char * path , const char * link)
 {
     return fs->Symlink(path,link);
 }
-int wrap_rename(const char * path , const char * newpath)
+int wrap_rename(const char * path , const char * newpath, unsigned int flags)
 {
-    return fs->Rename(path,newpath);
+    return fs->Rename(path,newpath, flags);
 }
 
-int wrap_chmod(const char *path, mode_t mode) {
-      return fs->Chmod(path, mode);
+int wrap_chmod(const char *path, mode_t mode, struct fuse_file_info *fi) {
+      return fs->Chmod(path, mode, fi);
 }
-int wrap_chown(const char *path, uid_t uid, gid_t gid) {
-      return fs->Chown(path, uid, gid);
+int wrap_chown(const char *path, uid_t uid, gid_t gid, struct fuse_file_info *fi) {
+      return fs->Chown(path, uid, gid, fi);
 }
-int wrap_truncate(const char *path, off_t newSize) {
-      return fs->Truncate(path, newSize);
+int wrap_truncate(const char *path, off_t newSize, struct fuse_file_info *fi) {
+      return fs->Truncate(path, newSize, fi);
 }
 int wrap_open(const char *path, struct fuse_file_info *fileInfo) {
       return fs->Open(path, fileInfo);
@@ -66,20 +66,20 @@ int wrap_release(const char *path, struct fuse_file_info *fileInfo) {
 int wrap_opendir(const char *path, struct fuse_file_info *fileInfo) {
       return fs->OpenDir(path, fileInfo);
 }
-int wrap_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fileInfo, int flag) {
+int wrap_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fileInfo, enum fuse_readdir_flags flag) {
       return fs->ReadDir(path, buf, filler, offset, fileInfo, flag);
 }
 int wrap_releasedir(const char *path, struct fuse_file_info *fileInfo) {
       return fs->ReleaseDir(path, fileInfo);
 }
-void* wrap_init(struct fuse_conn_info *conn) {
+void* wrap_init(struct fuse_conn_info *conn, struct fuse_config *cfg) {
       return fs->Init(conn);
 }
 int wrap_access(const char *path, int mask) {
       return fs->Access(path, mask);
 }
-int wrap_utimens(const char *path, const struct timespec tv[2]) {
-      return fs->UpdateTimens(path, tv);
+int wrap_utimens(const char *path, const struct timespec tv[2], struct fuse_file_info *fi) {
+      return fs->UpdateTimens(path, tv, fi);
 }
 void wrap_destroy(void * data) {
       fs->Destroy(data);
@@ -110,7 +110,7 @@ int main(int argc , char * argv[])
     parse_args(argc,argv,args);
     //std::cout <<"meta key size:"<<sizeof(kvfs_inode_meta_key) <<std::endl;
     //std::cout <<"header   size:"<<sizeof(kvfs_inode_header) <<std::endl;
-    fs = new TableFs(args);
+    fs = new TableFS(args);
     
     std::string mountdir = args.at("mount_dir");
     std::string datadir = args.at("data_dir");

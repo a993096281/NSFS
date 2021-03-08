@@ -288,7 +288,7 @@ ssize_t TableFS::MigrateDiskFileToBuffer(const tfs_meta_key_t &key, tfs_inode_t 
 }
 
 
-void* TableFS::Init(struct fuse_conn_info *conn){
+void* TableFS::Init(struct fuse_conn_info *conn, struct fuse_config *cfg){
     KVFS_LOG("kvfs init .. \n");
     if(conn != nullptr)
     {
@@ -318,7 +318,7 @@ void TableFS::Destroy(void * data){
 
 }
 
-int TableFS::GetAttr(const char *path, struct stat *statbuf) {
+int TableFS::GetAttr(const char *path, struct stat *statbuf, struct fuse_file_info *fi) {
     tfs_meta_key_t key;
     if (!PathLookup(path, key)) {
         KVFS_LOG("GetAttr Path Lookup: No such file or directory: %s\n", path);
@@ -514,7 +514,7 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
   return ret;
 }
 
-int TableFS::Truncate(const char * path ,off_t offset){
+int TableFS::Truncate(const char * path ,off_t offset, struct fuse_file_info *fi){
   tfs_meta_key_t key;
   if (!PathLookup(path, key)) {
       KVFS_LOG("Truncate: No such file or directory %s\n", path);
@@ -749,7 +749,7 @@ int TableFS::OpenDir(const char * path,struct fuse_file_info *fi){
   
 }
 
-int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t offset ,struct fuse_file_info * fi, int flag){
+int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t offset ,struct fuse_file_info * fi, enum fuse_readdir_flags flag){
   kvfs_file_handle * handle = reinterpret_cast <kvfs_file_handle *>(fi->fh);
   tfs_meta_key_t childkey;
   int ret = 0;
@@ -795,7 +795,7 @@ int TableFS::RemoveDir(const char * path){
   return -ENOTIMPLEMENT;
 }
 
-int TableFS::Rename(const char *new_path,const char * old_path){
+int TableFS::Rename(const char *new_path,const char * old_path, unsigned int flags){
   tfs_meta_key_t old_key;
   if (!PathLookup(old_path, old_key)) {
     KVFS_LOG("OpenDir: No such file or directory %s\n", old_path);
@@ -837,7 +837,7 @@ int TableFS::Access(const char * path,int mask){
   return -ENOTIMPLEMENT;
 }
 
-int TableFS::Chmod(const char * path , mode_t mode){
+int TableFS::Chmod(const char * path , mode_t mode, struct fuse_file_info *fi){
   tfs_meta_key_t key;
   if (!PathLookup(path, key)) {
     KVFS_LOG("Chmod: No such file or directory %s\n", path);
@@ -871,7 +871,7 @@ int TableFS::Chmod(const char * path , mode_t mode){
 
 }
 
-int TableFS::Chown(const char * path, uid_t uid,gid_t gid){
+int TableFS::Chown(const char * path, uid_t uid,gid_t gid, struct fuse_file_info *fi){
   tfs_meta_key_t key;
   if (!PathLookup(path, key)) {
     KVFS_LOG("Chown: No such file or directory %s\n", path);
@@ -905,7 +905,7 @@ int TableFS::Chown(const char * path, uid_t uid,gid_t gid){
   }
 }
 
-int TableFS::UpdateTimens(const char * path ,const struct timespec tv[2]){
+int TableFS::UpdateTimens(const char * path ,const struct timespec tv[2], struct fuse_file_info *fi){
   tfs_meta_key_t key;
   if (!PathLookup(path, key)) {
     KVFS_LOG("Chown: No such file or directory %s\n", path);
