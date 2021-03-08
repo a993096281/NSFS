@@ -4,13 +4,13 @@
  * @Contact     : 993096281@qq.com
  * @Description : 
  */
-#ifndef _NSFS_INODE_FORMAT_H_
-#define _NSFS_INODE_FORMAT_H_
+#ifndef _TABLEFS_INODE_FORMAT_H_
+#define _TABLEFS_INODE_FORMAT_H_
 
 #include <sys/stat.h>
-
 #include <map>
 #include <unordered_map>
+#include<stdarg.h>
 
 #include "leveldb/db.h"
 

@@ -5,8 +5,8 @@
  * @Description : 
  */
 
-#ifndef _NSFS_CONFIG_H_
-#define _NSFS_CONFIG_H_
+#ifndef _TABLEFS_CONFIG_H_
+#define _TABLEFS_CONFIG_H_
 
 #include <stdint.h>
 #include <string>

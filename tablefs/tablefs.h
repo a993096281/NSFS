@@ -4,8 +4,8 @@
  * @Contact     : 993096281@qq.com
  * @Description : 
  */
-#ifndef _NSFS_H_
-#define _NSFS_H_
+#ifndef _TABLEFS_TABLEFS_H_
+#define _TABLEFS_TABLEFS_H_
 
 #include <fuse.h>
 #include "inode_format.h"

@@ -4,12 +4,13 @@
  * @Contact     : 993096281@qq.com
  * @Description : 
  */
-#ifndef _NSFS_ADAPTOR_H_
-#define _NSFS_ADAPTOR_H_
+#ifndef _TABLEFS_ADAPTOR_H_
+#define _TABLEFS_ADAPTOR_H_
 
 
 #include "leveldb/db.h"
 #include <string>
+#include "inode_format.h"
 
 namespace tablefs {
 

@@ -30,7 +30,7 @@ int DBAdaptor::Init(const std::string & path){
         Status s = DB::Open(option,default_DBpath,&db_);
         KVFS_LOG("status : %s",s.ToString().c_str());
         assert(s.ok());
-        return s;
+        return 0;
     }
     else 
     {
@@ -38,7 +38,7 @@ int DBAdaptor::Init(const std::string & path){
         Status s = DB::Open(option,path,&db_);
         KVFS_LOG(s.ToString().c_str());
         assert(s.ok());
-        return s;
+        return 0;
     }
 }
 
@@ -57,7 +57,7 @@ int DBAdaptor::Get(const leveldb::Slice &key, std::string &result){
 
 int DBAdaptor::Put(const leveldb::Slice &key, const leveldb::Slice &values){
     WriteOptions write_options;
-    leveldb::Status s = db_->Put(write_options, key, value);
+    leveldb::Status s = db_->Put(write_options, key, values);
     if(s.ok()){
         return 0;
     } else {
