@@ -262,7 +262,7 @@ string TableFS::GetDiskFilePath(const tfs_meta_key_t &key, tfs_inode_t inode_id)
 }
 int TableFS::OpenDiskFile(const tfs_meta_key_t &key, const tfs_inode_header* iheader, int flags) {
   string fpath = GetDiskFilePath(key, iheader->fstat.st_ino);
-  fpath += '/0';
+  fpath += '\0';
   int fd = open(fpath.c_str(), flags | O_CREAT, iheader->fstat.st_mode);
   if(fd < 0) {
     KVFS_LOG("Open: cant open data file %s fd:%d",fpath.c_str(), fd);
@@ -272,7 +272,7 @@ int TableFS::OpenDiskFile(const tfs_meta_key_t &key, const tfs_inode_header* ihe
 
 int TableFS::TruncateDiskFile(const tfs_meta_key_t &key, tfs_inode_t inode_id, off_t new_size) {
   string fpath = GetDiskFilePath(key, inode_id);
-  fpath += '/0';
+  fpath += '\0';
   return truncate(fpath.c_str(), new_size);
 }
 
@@ -280,7 +280,7 @@ ssize_t TableFS::MigrateDiskFileToBuffer(const tfs_meta_key_t &key, tfs_inode_t 
                                          char* buffer,
                                          size_t size) {
   string fpath = GetDiskFilePath(key, inode_id);
-  fpath += '/0';
+  fpath += '\0';
   int fd = open(fpath.c_str(), O_RDONLY);
   ssize_t ret = pread(fd, buffer, size, 0);
   close(fd);
@@ -671,7 +671,7 @@ int TableFS::Unlink(const char * path){
     const tfs_inode_header *iheader = reinterpret_cast<const tfs_inode_header *>(value.data());
     if(iheader->has_blob > 0){
       string fpath = GetDiskFilePath(key, iheader->fstat.st_ino);
-      fpath += '/0';
+      fpath += '\0';
       unlink(fpath.c_str());
     }
     kvfs_file_handle::DeleteHandle(path);
