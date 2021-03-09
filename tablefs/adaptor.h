@@ -20,7 +20,6 @@ class DBAdaptor {
 public:
     DBAdaptor();
     ~DBAdaptor();
-    int Init();
 
     void Cleanup();
 

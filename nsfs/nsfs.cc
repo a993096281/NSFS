@@ -5,7 +5,7 @@
  * @Description : 
  */
 
-#include "tablefs.h"
+#include "nsfs.h"
 #include <cstring>
 #include <sys/types.h>
 #include <unistd.h>
@@ -17,28 +17,7 @@
 #define ENOTIMPLEMENT 189  //未实现
 
 using namespace std;
-namespace tablefs {
-
-inline static void BuildMetaKey(const tfs_inode_t inode_id,
-                                const tfs_hash_t hash_id,
-                                tfs_meta_key_t &key) {
-    key.inode_id = inode_id;
-    key.hash_id = hash_id;
-}
-
-inline static void BuildMetaKey(const char *path,
-                                const int len,
-                                const tfs_inode_t inode_id,
-                                tfs_meta_key_t &key) {
-  BuildMetaKey(inode_id, murmur64(path, len, 123), key);
-}
-
-inline static bool IsKeyInDir(const leveldb::Slice &key,
-                              const tfs_meta_key_t &dirkey) {
-  const tfs_meta_key_t* rkey = (const tfs_meta_key_t *) key.data();
-  return rkey->inode_id == dirkey.inode_id;
-//  return (strncmp(key.data(), dirkey.str, 8) == 0);
-}
+namespace nsfs {
 
 const tfs_inode_header *GetInodeHeader(const std::string &value) {
   return reinterpret_cast<const tfs_inode_header*> (value.data());
@@ -50,7 +29,7 @@ const tfs_stat_t *GetAttribute(std::string &value) {
 
 size_t GetInlineData(std::string &value, char* buf, size_t offset, size_t size) {
   const tfs_inode_header* header = GetInodeHeader(value);
-  size_t realoffset = TFS_INODE_HEADER_SIZE + header->namelen + 1 + offset;
+  size_t realoffset = TFS_INODE_HEADER_SIZE + offset;
   if (realoffset < value.size()) {
     if (realoffset + size > value.size()) {
       size = value.size() - realoffset;
@@ -85,24 +64,24 @@ void UpdateAttribute(std::string &value,
 void UpdateInlineData(std::string &value,
                       const char* buf, size_t offset, size_t size) {
   const tfs_inode_header* header = GetInodeHeader(value);
-  size_t realoffset = TFS_INODE_HEADER_SIZE + header->namelen + 1 + offset;
+  size_t realoffset = TFS_INODE_HEADER_SIZE + offset;
   UpdateIhandleValue(value, buf, realoffset, size);
 }
 
 void TruncateInlineData(std::string &value, size_t new_size) {
   const tfs_inode_header* header = GetInodeHeader(value);
-  size_t target_size = TFS_INODE_HEADER_SIZE + header->namelen + new_size + 1;
+  size_t target_size = TFS_INODE_HEADER_SIZE + new_size;
   value.resize(target_size);
 }
 
 void DropInlineData(std::string &value) {
   const tfs_inode_header* header = GetInodeHeader(value);
-  size_t target_size = TFS_INODE_HEADER_SIZE + header->namelen + 1;
+  size_t target_size = TFS_INODE_HEADER_SIZE;
   value.resize(target_size);
 }
 
-void TableFS::InitStat(tfs_stat_t &statbuf,
-                       tfs_inode_t inode,
+void NSFS::InitStat(tfs_stat_t &statbuf,
+                       inode_id_t inode,
                        mode_t mode,
                        dev_t dev) {
     statbuf.st_ino = inode;
@@ -132,36 +111,8 @@ void TableFS::InitStat(tfs_stat_t &statbuf,
     statbuf.st_ctim.tv_nsec = 0;
 }
 
-tfs_inode_val_t TableFS::InitInodeValue(tfs_inode_t inum,
-                                        mode_t mode,
-                                        dev_t dev,
-                                        leveldb::Slice filename) {
-    tfs_inode_val_t ival;
-    ival.size = TFS_INODE_HEADER_SIZE + filename.size() + 1;
-    ival.value = new char[ival.size];
-    tfs_inode_header* header = reinterpret_cast<tfs_inode_header*>(ival.value);
-    InitStat(header->fstat, inum, mode, dev);
-    header->has_blob = 0;
-    header->namelen = filename.size();
-    char* name_buffer = ival.value + TFS_INODE_HEADER_SIZE;
-    memcpy(name_buffer, filename.data(), filename.size());
-    name_buffer[header->namelen] = '\0';
-    return ival;
-}
 
-std::string TableFS::InitInodeValue(const std::string& old_value,
-                                    leveldb::Slice filename) {
-  //TODO: Optimize avoid too many copies
-  std::string new_value = old_value;
-  tfs_inode_header header = *GetInodeHeader(old_value);
-  new_value.replace(TFS_INODE_HEADER_SIZE, header.namelen+1,
-                    filename.data(), filename.size()+1);
-  header.namelen = filename.size();
-  UpdateInodeHeader(new_value, header);
-  return new_value;
-}
-
-TableFS::TableFS(const kvfs_args & args) : args_(args), db_(nullptr),config_(nullptr),use_fuse(false)
+NSFS::NSFS(const kvfs_args & args) : args_(args), db_(nullptr),config_(nullptr),use_fuse(false)
 {
 
     config_  = new KVFSConfig();
@@ -169,100 +120,77 @@ TableFS::TableFS(const kvfs_args & args) : args_(args), db_(nullptr),config_(nul
 
     KVFS_LOG("init config..\n");
 
-    KVFS_LOG("init leveldb adaptor ..\n");
+    KVFS_LOG("init metadb adaptor ..\n");
     db_ = new DBAdaptor();
     db_->Init(config_->GetMetaDir());
     cfg_ = nullptr;
 }
 
-TableFS::~TableFS(){
+NSFS::~NSFS(){
   KVFS_LOG("FS exit\n");
 
 }
 
-void TableFS::FreeInodeValue(tfs_inode_val_t &ival) {
-  if (ival.value != NULL) {
-    delete [] ival.value;
-    ival.value = NULL;
+bool NSFS::PathLookup(const char *path,
+                         inode_id_t &key) {
+
+  const char* lpos = path;
+  const char* rpos;
+  bool flag_found = true;
+  inode_id_t inode_in_search = ROOT_INODE_ID;
+  while ((rpos = strchr(lpos+1, PATH_DELIMITER)) != NULL) {
+      if (rpos - lpos > 0) {
+          string fname(lpos+1, rpos-lpos-1);
+          
+          int ret = db_->DirGet(inode_in_search, fname, key);
+          if (ret == 0) {
+              inode_in_search = key;
+          } else if (ret == 1){
+              errno = ENOENT;
+              flag_found = false;
+          } else{
+              errno = EDBERROR;
+              flag_found = false;
+          }
+          
+          if (!flag_found) {
+              return false;
+          }
+      }
+      lpos = rpos;
   }
+  rpos = strchr(lpos, '\0');
+  if (rpos != NULL && rpos-lpos > 1) {  //最后一个文件名
+    string fname(lpos+1, rpos-lpos-1);
+    int ret = db_->DirGet(inode_in_search, fname, key);
+    if (ret == 0) {
+        return true;
+    } else if (ret == 1){
+        errno = ENOENT;
+        flag_found = false;
+    } else{
+        errno = EDBERROR;
+        flag_found = false;
+    }
+    
+    if (!flag_found) {
+        return false;
+    }
+  }
+
+  if (lpos == path) {  //说明是“/”
+      key = ROOT_INODE_ID;
+  }
+  return true;
+    
 }
 
-bool TableFS::ParentPathLookup(const char *path,
-                               tfs_meta_key_t &key,
-                               tfs_inode_t &inode_in_search,
-                               const char* &lastdelimiter) {
-    const char* lpos = path;
-    const char* rpos;
-    bool flag_found = true;
-    std::string item;
-    inode_in_search = ROOT_INODE_ID;
-    while ((rpos = strchr(lpos+1, PATH_DELIMITER)) != NULL) {
-        if (rpos - lpos > 0) {
-            BuildMetaKey(lpos+1, rpos-lpos-1, inode_in_search, key);
-            std::string result;
-            int ret = db_->Get(key.ToSlice(), result);
-            if (ret == 0) {
-                inode_in_search = GetAttribute(result)->st_ino;
-            } else if (ret == 1){
-                errno = ENOENT;
-                flag_found = false;
-            } else{
-               errno = EDBERROR;
-               flag_found = false;
-            }
-            
-            if (!flag_found) {
-                return false;
-            }
-        }
-        lpos = rpos;
-    }
-    if (lpos == path) {
-        BuildMetaKey(NULL, 0, ROOT_INODE_ID, key);
-    }
-    lastdelimiter = lpos;
-    return flag_found;
-}
-
-bool TableFS::PathLookup(const char *path,
-                         tfs_meta_key_t &key) {
-  const char* lpos;
-  tfs_inode_t inode_in_search;
-  if (ParentPathLookup(path, key, inode_in_search, lpos)) {
-    const char* rpos = strchr(lpos, '\0');
-    if (rpos != NULL && rpos-lpos > 1) {
-      BuildMetaKey(lpos+1, rpos-lpos-1, inode_in_search, key);
-    }
-    return true;
-  } else {
-    return false;
-  }
-}
-
-bool TableFS::PathLookup(const char *path,
-                         tfs_meta_key_t &key,
-                         leveldb::Slice &filename) {
-  const char* lpos;
-  tfs_inode_t inode_in_search;
-  if (ParentPathLookup(path, key, inode_in_search, lpos)) {
-    const char* rpos = strchr(lpos, '\0');
-    if (rpos != NULL && rpos-lpos > 1) {
-      BuildMetaKey(lpos+1, rpos-lpos-1, inode_in_search, key);
-      filename = leveldb::Slice(lpos+1, rpos-lpos-1);
-    } else {
-      filename = leveldb::Slice(lpos, 1);
-    }
-    return true;
-  } else {
-    return false;
-  }
-}
-string TableFS::GetDiskFilePath(const tfs_meta_key_t &key, tfs_inode_t inode_id){
-  string path = config_->GetDataDir() + "/" + std::to_string(inode_id) + "_" +std::to_string(key.hash_id);
+string NSFS::GetDiskFilePath(const inode_id_t &inode_id){
+  string path = config_->GetDataDir() + "/" + std::to_string(inode_id);
   return path;
 }
-int TableFS::OpenDiskFile(const tfs_meta_key_t &key, const tfs_inode_header* iheader, int flags) {
-  string fpath = GetDiskFilePath(key, iheader->fstat.st_ino);
+int NSFS::OpenDiskFile(const inode_id_t &key, const tfs_inode_header* iheader, int flags) {
+  string fpath = GetDiskFilePath(key);
   fpath += '\0';
   int fd = open(fpath.c_str(), flags | O_CREAT, iheader->fstat.st_mode);
   if(fd < 0) {
@@ -271,16 +199,14 @@ int TableFS::OpenDiskFile(const tfs_meta_key_t &key, const tfs_inode_header* ihe
   return fd;
 }
 
-int TableFS::TruncateDiskFile(const tfs_meta_key_t &key, tfs_inode_t inode_id, off_t new_size) {
-  string fpath = GetDiskFilePath(key, inode_id);
+int NSFS::TruncateDiskFile(const inode_id_t &key, off_t new_size) {
+  string fpath = GetDiskFilePath(key);
   fpath += '\0';
   return truncate(fpath.c_str(), new_size);
 }
 
-ssize_t TableFS::MigrateDiskFileToBuffer(const tfs_meta_key_t &key, tfs_inode_t inode_id,
-                                         char* buffer,
-                                         size_t size) {
-  string fpath = GetDiskFilePath(key, inode_id);
+ssize_t NSFS::MigrateDiskFileToBuffer(const inode_id_t &key, char* buffer, size_t size) {
+  string fpath = GetDiskFilePath(key);
   fpath += '\0';
   int fd = open(fpath.c_str(), O_RDONLY);
   ssize_t ret = pread(fd, buffer, size, 0);
@@ -289,8 +215,41 @@ ssize_t TableFS::MigrateDiskFileToBuffer(const tfs_meta_key_t &key, tfs_inode_t 
   return ret;
 }
 
+int NSFS::MigrateToDiskFile(const inode_id_t &key, string &value, int &fd, int flags) {
+  const tfs_inode_header* iheader = GetInodeHeader(value);
+  if (fd >= 0) {
+    close(fd);
+  }
+  fd = OpenDiskFile(key, iheader, flags);
+  if (fd < 0) {
+    fd = -1;
+    return -errno;
+  }
+  int ret = 0;
+  if (iheader->fstat.st_size > 0 ) {
+    const char* buffer = (const char *) iheader +
+                         (TFS_INODE_HEADER_SIZE);
+    if (pwrite(fd, buffer, iheader->fstat.st_size, 0) !=
+        iheader->fstat.st_size) {
+      ret = -errno;
+    }
+    DropInlineData(value);
+  }
+  return ret;
+}
 
-void* TableFS::Init(struct fuse_conn_info *conn, struct fuse_config *cfg){
+string NSFS::InitInodeValue(inode_id_t inum, mode_t mode, dev_t dev) {
+    int value_size = TFS_INODE_HEADER_SIZE;
+    string value(value_size, '\0');
+
+    tfs_inode_header* header = reinterpret_cast<tfs_inode_header*>(value.data());
+    InitStat(header->fstat, inum, mode, dev);
+    header->has_blob = 0;
+    return value;
+}
+
+
+void* NSFS::Init(struct fuse_conn_info *conn, struct fuse_config *cfg){
     KVFS_LOG("kvfs init .. \n");
     cfg_ = cfg;
     if(conn != nullptr)
@@ -301,39 +260,37 @@ void* TableFS::Init(struct fuse_conn_info *conn, struct fuse_config *cfg){
     //
     if (config_->IsEmpty()) {
         KVFS_LOG("file system is empty .. create root inode .. ");
-        tfs_meta_key_t key;
-        BuildMetaKey(NULL, 0, ROOT_INODE_ID, key);
+        inode_id_t key = ROOT_INODE_ID;
         struct stat statbuf;
         lstat(ROOT_INODE_STAT, &statbuf);
-        tfs_inode_val_t value = InitInodeValue(ROOT_INODE_ID,
-            statbuf.st_mode, statbuf.st_dev, leveldb::Slice("\0"));
-        if (db_->Put(key.ToSlice(), value.ToSlice()) != 0) {
-            KVFS_LOG("leveldb put error\n");
+        string value = InitInodeValue(ROOT_INODE_ID, statbuf.st_mode, statbuf.st_dev);
+        int ret = db_->InodePut(key, value);
+        if(ret != 0){
+          KVFS_LOG("add root inode error");
         }
-        FreeInodeValue(value);
     } else {
         KVFS_LOG("not empty ..  ");
     }
     return config_;
 }
 
-void TableFS::Destroy(void * data){
+void NSFS::Destroy(void * data){
   KVFS_LOG("FS Destroy\n");
   db_->Cleanup();
   delete db_;
   delete config_;
 }
 
-int TableFS::GetAttr(const char *path, struct stat *statbuf, struct fuse_file_info *fi) {
+int NSFS::GetAttr(const char *path, struct stat *statbuf, struct fuse_file_info *fi) {
     KVFS_LOG("GetAttr:%s\n", path);
-    tfs_meta_key_t key;
+    inode_id_t key;
     if (!PathLookup(path, key)) {
         KVFS_LOG("GetAttr Path Lookup: No such file or directory: %s\n", path);
         return -errno;
     }
     int ret = 0;
     std::string value;
-    ret = db_->Get(key.ToSlice(), value);
+    ret = db_->InodeGet(key, value);
     if (ret == 0) {
         *statbuf = *(GetAttribute(value));
         return 0;
@@ -344,10 +301,9 @@ int TableFS::GetAttr(const char *path, struct stat *statbuf, struct fuse_file_in
     }
 }
 
-kvfs_file_handle * TableFS::InitFileHandle(const char * path, struct fuse_file_info * fi
-        ,const tfs_meta_key_t & key , const std::string & value )
+kvfs_file_handle * NSFS::InitFileHandle(const char * path, struct fuse_file_info * fi, const inode_id_t & key , const std::string & value )
 {
-       kvfs_file_handle * handle = new kvfs_file_handle(path); 
+       kvfs_file_handle * handle = new kvfs_file_handle(key); 
        handle->key = key;
        handle->value = value;
        handle->flags = fi->flags;
@@ -383,15 +339,15 @@ kvfs_file_handle * TableFS::InitFileHandle(const char * path, struct fuse_file_i
        return handle;
 }
 
-int TableFS::Open(const char *path, struct fuse_file_info *fi) {
+int NSFS::Open(const char *path, struct fuse_file_info *fi) {
     KVFS_LOG("Open:%s\n", path);
-    tfs_meta_key_t key;
+    inode_id_t key;
     if (!PathLookup(path, key)) {
         KVFS_LOG("Open: No such file or directory %s\n", path);
         return -errno;
     }
     string value;
-    int ret = db_->Get(key.ToSlice(), value);
+    int ret = db_->InodeGet(key, value);
     if(ret == 0){  //该文件存在
       InitFileHandle(path,fi,key,value);
     } else if (ret == 1){  //该文件不存在
@@ -402,10 +358,10 @@ int TableFS::Open(const char *path, struct fuse_file_info *fi) {
     return 0;
 }
 
-int TableFS::Read(const char * path,char * buf , size_t size ,off_t offset ,struct fuse_file_info * fi){
+int NSFS::Read(const char * path,char * buf , size_t size ,off_t offset ,struct fuse_file_info * fi){
     KVFS_LOG("Read: %s size : %d , offset %d \n",path,size,offset);
     kvfs_file_handle *handle = reinterpret_cast<kvfs_file_handle *>(fi->fh);
-    tfs_meta_key_t key = handle->key;
+    inode_id_t key = handle->key;
     const tfs_inode_header *header = reinterpret_cast<const tfs_inode_header *>(handle->value.data());
     int ret = 0;
     if (header->has_blob > 0) {  //大文件
@@ -423,33 +379,11 @@ int TableFS::Read(const char * path,char * buf , size_t size ,off_t offset ,stru
     return ret;
 }
 
-int TableFS::MigrateToDiskFile(const tfs_meta_key_t &key, string &value, int &fd, int flags) {
-  const tfs_inode_header* iheader = GetInodeHeader(value);
-  if (fd >= 0) {
-    close(fd);
-  }
-  fd = OpenDiskFile(key, iheader, flags);
-  if (fd < 0) {
-    fd = -1;
-    return -errno;
-  }
-  int ret = 0;
-  if (iheader->fstat.st_size > 0 ) {
-    const char* buffer = (const char *) iheader +
-                         (TFS_INODE_HEADER_SIZE + iheader->namelen + 1);
-    if (pwrite(fd, buffer, iheader->fstat.st_size, 0) !=
-        iheader->fstat.st_size) {
-      ret = -errno;
-    }
-    DropInlineData(value);
-  }
-  return ret;
-}
 
-int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offset ,struct fuse_file_info * fi){
+int NSFS::Write(const char * path , const char * buf,size_t size ,off_t offset ,struct fuse_file_info * fi){
     KVFS_LOG("Write : %s %lld %d\n",path,offset ,size);
     kvfs_file_handle *handle = reinterpret_cast<kvfs_file_handle *>(fi->fh);
-    tfs_meta_key_t key = handle->key;
+    inode_id_t key = handle->key;
     const tfs_inode_header *header = reinterpret_cast<const tfs_inode_header *>(handle->value.data());
     bool has_larger_size = (header->fstat.st_size < offset + size);
     int ret = 0;
@@ -466,7 +400,7 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
         tfs_inode_header new_iheader = *GetInodeHeader(handle->value);
         new_iheader.fstat.st_size = offset + size;
         UpdateInodeHeader(handle->value, new_iheader);
-        int res = db_->Put(handle->key.ToSlice(), handle->value);
+        int res = db_->InodePut(key, handle->value);
         if(res != 0){
           return -EDBERROR;
         }
@@ -501,7 +435,7 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
         new_iheader.fstat.st_size = offset + size;
         new_iheader.has_blob = 1;
         UpdateInodeHeader(handle->value, new_iheader);
-        int res = db_->Put(key.ToSlice(), handle->value);
+        int res = db_->InodePut(key, handle->value);
         if(res != 0){
           return -EDBERROR;
         }
@@ -517,7 +451,7 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
         new_iheader.fstat.st_size = offset + size;
         UpdateInodeHeader(handle->value, new_iheader);
       }
-      int res = db_->Put(key.ToSlice(), handle->value);
+      int res = db_->InodePut(key, handle->value);
       if(res != 0){
         return -EDBERROR;
       }
@@ -527,16 +461,16 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
   return ret;
 }
 
-int TableFS::Truncate(const char * path ,off_t offset, struct fuse_file_info *fi){
+int NSFS::Truncate(const char * path ,off_t offset, struct fuse_file_info *fi){
   KVFS_LOG("Truncate:%s %d\n", path, offset);
-  tfs_meta_key_t key;
+  inode_id_t key;
   if (!PathLookup(path, key)) {
       KVFS_LOG("Truncate: No such file or directory %s\n", path);
       return -errno;
   }
     off_t new_size = offset;
     string value;
-    int ret = db_->Get(key.ToSlice(), value);
+    int ret = db_->InodeGet(key, value);
     if(ret == 0){  //该文件存在
       const tfs_inode_header *iheader = reinterpret_cast<const tfs_inode_header *>(value.data());
 
@@ -572,7 +506,7 @@ int TableFS::Truncate(const char * path ,off_t offset, struct fuse_file_info *fi
         }
         UpdateInodeHeader(value, new_iheader);
       }
-      int res = db_->Put(key.ToSlice(), value);
+      int res = db_->InodePut(key, value);
       if(res != 0){
         return -EDBERROR;
       }
@@ -585,7 +519,7 @@ int TableFS::Truncate(const char * path ,off_t offset, struct fuse_file_info *fi
 
   return ret;
 }
-int TableFS::Fsync(const char * path,int datasync ,struct fuse_file_info * fi){
+int NSFS::Fsync(const char * path,int datasync ,struct fuse_file_info * fi){
     KVFS_LOG("Fsync: %s\n",path);
 
     kvfs_file_handle * handle = reinterpret_cast <kvfs_file_handle *>(fi->fh);
@@ -607,10 +541,10 @@ int TableFS::Fsync(const char * path,int datasync ,struct fuse_file_info * fi){
     }
     return -ret;
 }
-int TableFS::Release(const char * path ,struct fuse_file_info * fi){
+int NSFS::Release(const char * path ,struct fuse_file_info * fi){
   KVFS_LOG("Release:%s \n", path);
   kvfs_file_handle* handle = reinterpret_cast<kvfs_file_handle*>(fi->fh);
-  tfs_meta_key_t key = handle->key;
+  inode_id_t key = handle->key;
 
   if (handle->mode == INODE_WRITE) {
     const tfs_stat_t *value = GetAttribute(handle->value);
@@ -626,11 +560,11 @@ int TableFS::Release(const char * path ,struct fuse_file_info * fi){
   if (handle->fd >= 0) {
     ret = close(handle->fd);
   }
-  int res = db_->Put(key.ToSlice(), handle->value);
+  int res = db_->InodePut(key, handle->value);
   if(res != 0){
     return -EDBERROR;
   }
-  kvfs_file_handle::DeleteHandle(path);
+  kvfs_file_handle::DeleteHandle(key);
 
   if (ret != 0) {
     return -errno;
@@ -638,9 +572,9 @@ int TableFS::Release(const char * path ,struct fuse_file_info * fi){
     return 0;
   }
 }
-int TableFS::Readlink(const char * path ,char * buf,size_t size){
+int NSFS::Readlink(const char * path ,char * buf,size_t size){
   KVFS_LOG("Readlink:%s \n", path);
-  tfs_meta_key_t key;
+  inode_id_t key;
   if (!PathLookup(path, key)) {
       KVFS_LOG("Readlink: No such file or directory %s\n", path);
       return -errno;
@@ -648,7 +582,7 @@ int TableFS::Readlink(const char * path ,char * buf,size_t size){
   
   std::string result;
   int ret = 0;
-  ret = db_->Get(key.ToSlice(), result);
+  ret = db_->InodeGet(key, result);
   if(ret == 0){
     size_t data_size = GetInlineData(result, buf, 0, size-1);
     buf[data_size] = '\0';
@@ -660,29 +594,29 @@ int TableFS::Readlink(const char * path ,char * buf,size_t size){
   }
 }
 
-int TableFS::Symlink(const char * target , const char * path){
+int NSFS::Symlink(const char * target , const char * path){
   KVFS_LOG("Symlink:not implement");
   return -ENOTIMPLEMENT;
 }
 
-int TableFS::Unlink(const char * path){
-  tfs_meta_key_t key;
+int NSFS::Unlink(const char * path){
+  inode_id_t key;
   if (!PathLookup(path, key)) {
     KVFS_LOG("Unlink: No such file or directory %s\n", path);
     return -errno;
   }
   std::string value;
   int ret = 0;
-  ret = db_->Get(key.ToSlice(), value);
+  ret = db_->InodeGet(key, value);
   if(ret == 0){
     const tfs_inode_header *iheader = reinterpret_cast<const tfs_inode_header *>(value.data());
     if(iheader->has_blob > 0){
-      string fpath = GetDiskFilePath(key, iheader->fstat.st_ino);
+      string fpath = GetDiskFilePath(key);
       fpath += '\0';
       unlink(fpath.c_str());
     }
-    kvfs_file_handle::DeleteHandle(path);
-    int res = db_->Delete(key.ToSlice());
+    kvfs_file_handle::DeleteHandle(key);
+    int res = db_->InodeDelete(key);
     if(res != 0){
       return -EDBERROR;
     }
@@ -695,10 +629,10 @@ int TableFS::Unlink(const char * path){
   }
 }
 
-int TableFS::MakeNode(const char * path,mode_t mode ,dev_t dev){
+int NSFS::MakeNode(const char * path,mode_t mode ,dev_t dev){
   KVFS_LOG("MakeNode:%s", path);
- tfs_meta_key_t key;
-  leveldb::Slice filename;
+  inode_id_t key;
+  Slice filename;
   if (!PathLookup(path, key, filename)) {
     KVFS_LOG("MakeNode: No such file or directory %s\n", path);
     return -errno;
@@ -708,7 +642,7 @@ int TableFS::MakeNode(const char * path,mode_t mode ,dev_t dev){
 
   int ret = 0;
   
-  ret=db_->Put(key.ToSlice(), value.ToSlice());
+  ret=db_->Put(key, value);
   if(ret != 0){
     return -EDBERROR;
   }
@@ -718,9 +652,9 @@ int TableFS::MakeNode(const char * path,mode_t mode ,dev_t dev){
   return 0;
 }
 
-int TableFS::MakeDir(const char * path,mode_t mode){
+int NSFS::MakeDir(const char * path,mode_t mode){
   KVFS_LOG("MakeDir:%s", path);
-  tfs_meta_key_t key;
+  inode_id_t key;
   leveldb::Slice filename;
   if (!PathLookup(path, key, filename)) {
     KVFS_LOG("MakeDir: No such file or directory %s\n", path);
@@ -731,7 +665,7 @@ int TableFS::MakeDir(const char * path,mode_t mode){
     InitInodeValue(config_->NewInode(), mode | S_IFDIR, 0, filename);
 
   int ret = 0;
-  ret=db_->Put(key.ToSlice(), value.ToSlice());
+  ret=db_->Put(key, value);
   if(ret != 0){
     return -EDBERROR;
   }
@@ -741,9 +675,9 @@ int TableFS::MakeDir(const char * path,mode_t mode){
   return 0;
 }
 
-int TableFS::OpenDir(const char * path,struct fuse_file_info *fi){
+int NSFS::OpenDir(const char * path,struct fuse_file_info *fi){
   KVFS_LOG("OpenDir:%s", path);
-  tfs_meta_key_t key;
+  inode_id_t key;
   std::string inode;
   if (!PathLookup(path, key)) {
     KVFS_LOG("OpenDir: No such file or directory %s\n", path);
@@ -751,7 +685,7 @@ int TableFS::OpenDir(const char * path,struct fuse_file_info *fi){
   }
   std::string value;
   int ret = 0;
-  ret = db_->Get(key.ToSlice(), value);
+  ret = db_->Get(key, value);
   if(ret == 0){
     kvfs_file_handle * handle = new kvfs_file_handle(path);
     handle->fd = -1;
@@ -770,10 +704,10 @@ int TableFS::OpenDir(const char * path,struct fuse_file_info *fi){
   
 }
 
-int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t offset ,struct fuse_file_info * fi, enum fuse_readdir_flags flag){
+int NSFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t offset ,struct fuse_file_info * fi, enum fuse_readdir_flags flag){
   KVFS_LOG("ReadDir:%s", path);
   kvfs_file_handle * handle = reinterpret_cast <kvfs_file_handle *>(fi->fh);
-  tfs_meta_key_t childkey;
+  inode_id_t childkey;
   int ret = 0;
   tfs_inode_t child_inumber = GetAttribute(handle->value)->st_ino;
   BuildMetaKey(child_inumber,
@@ -788,7 +722,7 @@ int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t 
     KVFS_LOG("filler .. error\n");
     return -errno;
   }
-  for (iter->Seek(childkey.ToSlice());
+  for (iter->Seek(childkey);
        iter->Valid() && IsKeyInDir(iter->key(), childkey);
        iter->Next()) {
     const char* name_buffer = iter->value().data() + TFS_INODE_HEADER_SIZE;
@@ -806,27 +740,27 @@ int TableFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t 
   return ret;
 }
 
-int TableFS::ReleaseDir(const char * path,struct fuse_file_info * fi){
+int NSFS::ReleaseDir(const char * path,struct fuse_file_info * fi){
   KVFS_LOG("ReleaseDir:%s", path);
   //kvfs_file_handle * handle = reinterpret_cast <kvfs_file_handle *>(fi->fh);
   kvfs_file_handle::DeleteHandle(path);
   return 0;
 }
 
-int TableFS::RemoveDir(const char * path){
+int NSFS::RemoveDir(const char * path){
   //感觉要删除整个目录的所有文件
   KVFS_LOG("RemoveDir:not implement");
   return -ENOTIMPLEMENT;
 }
 
-int TableFS::Rename(const char *new_path,const char * old_path, unsigned int flags){
+int NSFS::Rename(const char *new_path,const char * old_path, unsigned int flags){
   KVFS_LOG("Rename:%s %s", new_path, old_path);
-  tfs_meta_key_t old_key;
+  inode_id_t old_key;
   if (!PathLookup(old_path, old_key)) {
     KVFS_LOG("OpenDir: No such file or directory %s\n", old_path);
     return -errno;
   }
-  tfs_meta_key_t new_key;
+  inode_id_t new_key;
   leveldb::Slice filename;
   if (!PathLookup(new_path, new_key, filename)) {
     KVFS_LOG("OpenDir: No such file or directory %s\n", new_path);
@@ -835,15 +769,15 @@ int TableFS::Rename(const char *new_path,const char * old_path, unsigned int fla
 
   std::string old_value;
   int ret = 0;
-  ret = db_->Get(old_key.ToSlice(), old_value);
+  ret = db_->Get(old_key, old_value);
   if(ret == 0){
     const tfs_inode_header *iheader = reinterpret_cast<const tfs_inode_header *>(old_value.data());
     std::string new_value = InitInodeValue(old_value, filename);
-    ret=db_->Put(new_key.ToSlice(), new_value);
+    ret=db_->Put(new_key, new_value);
     if(ret != 0){
       return -EDBERROR;
     }
-    ret = db_->Delete(old_key.ToSlice());
+    ret = db_->Delete(old_key);
     if(ret != 0){
       return -EDBERROR;
     }
@@ -858,22 +792,22 @@ int TableFS::Rename(const char *new_path,const char * old_path, unsigned int fla
 
 }
 
-int TableFS::Access(const char * path,int mask){
+int NSFS::Access(const char * path,int mask){
   KVFS_LOG("Access:not implement:%s", path);
   //return -ENOTIMPLEMENT;
   return 0;
 }
 
-int TableFS::Chmod(const char * path , mode_t mode, struct fuse_file_info *fi){
+int NSFS::Chmod(const char * path , mode_t mode, struct fuse_file_info *fi){
   KVFS_LOG("Chmod:%s", path);
-  tfs_meta_key_t key;
+  inode_id_t key;
   if (!PathLookup(path, key)) {
     KVFS_LOG("Chmod: No such file or directory %s\n", path);
     return -errno;
   }
   std::string value;
   int ret = 0;
-  ret = db_->Get(key.ToSlice(), value);
+  ret = db_->Get(key, value);
   if(ret == 0){
     kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(path);
     string *mu_value = nullptr;
@@ -886,7 +820,7 @@ int TableFS::Chmod(const char * path , mode_t mode, struct fuse_file_info *fi){
     tfs_stat_t new_value = *st_value;
     new_value.st_mode = mode;
     UpdateAttribute(*mu_value, new_value);
-    ret=db_->Put(key.ToSlice(), *mu_value);
+    ret=db_->Put(key, *mu_value);
     if(ret != 0){
       return -EDBERROR;
     }
@@ -899,16 +833,16 @@ int TableFS::Chmod(const char * path , mode_t mode, struct fuse_file_info *fi){
 
 }
 
-int TableFS::Chown(const char * path, uid_t uid,gid_t gid, struct fuse_file_info *fi){
+int NSFS::Chown(const char * path, uid_t uid,gid_t gid, struct fuse_file_info *fi){
   KVFS_LOG("Chown:%s", path);
-  tfs_meta_key_t key;
+  inode_id_t key;
   if (!PathLookup(path, key)) {
     KVFS_LOG("Chown: No such file or directory %s\n", path);
     return -errno;
   }
   std::string value;
   int ret = 0;
-  ret = db_->Get(key.ToSlice(), value);
+  ret = db_->Get(key, value);
   if(ret == 0){
     kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(path);
     string *mu_value = nullptr;
@@ -922,7 +856,7 @@ int TableFS::Chown(const char * path, uid_t uid,gid_t gid, struct fuse_file_info
     new_value.st_uid = uid;
     new_value.st_gid = gid;
     UpdateAttribute(*mu_value, new_value);
-    ret=db_->Put(key.ToSlice(), *mu_value);
+    ret=db_->Put(key, *mu_value);
     if(ret != 0){
       return -EDBERROR;
     }
@@ -934,16 +868,16 @@ int TableFS::Chown(const char * path, uid_t uid,gid_t gid, struct fuse_file_info
   }
 }
 
-int TableFS::UpdateTimens(const char * path ,const struct timespec tv[2], struct fuse_file_info *fi){
+int NSFS::UpdateTimens(const char * path ,const struct timespec tv[2], struct fuse_file_info *fi){
   KVFS_LOG("UpdateTimens:%s", path);
-  tfs_meta_key_t key;
+  inode_id_t key;
   if (!PathLookup(path, key)) {
     KVFS_LOG("Chown: No such file or directory %s\n", path);
     return -errno;
   }
   std::string value;
   int ret = 0;
-  ret = db_->Get(key.ToSlice(), value);
+  ret = db_->Get(key, value);
   if(ret == 0){
     kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(path);
     string *mu_value = nullptr;
@@ -959,7 +893,7 @@ int TableFS::UpdateTimens(const char * path ,const struct timespec tv[2], struct
     new_value.st_mtim.tv_sec = tv[1].tv_sec;
     new_value.st_mtim.tv_nsec = tv[1].tv_nsec;
     UpdateAttribute(*mu_value, new_value);
-    ret=db_->Put(key.ToSlice(), *mu_value);
+    ret=db_->Put(key, *mu_value);
     if(ret != 0){
       return -EDBERROR;
     }
