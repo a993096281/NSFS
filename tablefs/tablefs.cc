@@ -298,7 +298,7 @@ void* TableFS::Init(struct fuse_conn_info *conn, struct fuse_config *cfg){
     }
     //
     if (config_->IsEmpty()) {
-        KVFS_LOG("file system is empty .. \n create root inode .. ");
+        KVFS_LOG("file system is empty .. create root inode .. ");
         tfs_meta_key_t key;
         BuildMetaKey(NULL, 0, ROOT_INODE_ID, key);
         struct stat statbuf;
@@ -646,6 +646,7 @@ int TableFS::Readlink(const char * path ,char * buf,size_t size){
 }
 
 int TableFS::Symlink(const char * target , const char * path){
+  KVFS_LOG("Symlink:not implement");
   return -ENOTIMPLEMENT;
 }
 
@@ -793,6 +794,7 @@ int TableFS::ReleaseDir(const char * path,struct fuse_file_info * fi){
 
 int TableFS::RemoveDir(const char * path){
   //感觉要删除整个目录的所有文件
+  KVFS_LOG("RemoveDir:not implement");
   return -ENOTIMPLEMENT;
 }
 
@@ -835,7 +837,9 @@ int TableFS::Rename(const char *new_path,const char * old_path, unsigned int fla
 }
 
 int TableFS::Access(const char * path,int mask){
-  return -ENOTIMPLEMENT;
+  KVFS_LOG("Access:not implement");
+  //return -ENOTIMPLEMENT;
+  return 0;
 }
 
 int TableFS::Chmod(const char * path , mode_t mode, struct fuse_file_info *fi){
