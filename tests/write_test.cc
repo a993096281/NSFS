@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <string>
 #include<sys/types.h>
 #include<sys/stat.h>
 #include<fcntl.h> 
+#include<unistd.h>
 
 #define FILE_PATH "/home/lzw/fs/mnt/aa/abcd"
 
@@ -16,7 +18,7 @@ int main(int argc, char *argv[])
 {
     int fd = open(FILE_PATH, O_CREAT | O_RDWR);
     if(fd < 0){
-        printf("open error:%s fd:%d\n",FILE_PATH, ret);
+        printf("open error:%s fd:%d\n",FILE_PATH, fd);
         return 0;
     }
     char buf[BLOCK_SIZE];
