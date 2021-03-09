@@ -258,6 +258,7 @@ bool TableFS::PathLookup(const char *path,
 }
 string TableFS::GetDiskFilePath(const tfs_meta_key_t &key, tfs_inode_t inode_id){
   string path = config_->GetDataDir() + "/" + std::to_string(inode_id) + "_" +std::to_string(key.hash_id);
+  path += '\0';
   return path;
 }
 int TableFS::OpenDiskFile(const tfs_meta_key_t &key, const tfs_inode_header* iheader, int flags) {
