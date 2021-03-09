@@ -504,6 +504,7 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
         if(res != 0){
           return -EDBERROR;
         }
+        ret = size;
       }
       
       
