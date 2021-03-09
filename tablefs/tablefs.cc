@@ -423,7 +423,7 @@ int TableFS::Read(const char * path,char * buf , size_t size ,off_t offset ,stru
 }
 
 int TableFS::MigrateToDiskFile(const tfs_meta_key_t &key, string &value, int &fd, int flags) {
-  const tfs_inode_header* iheader = GetInodeHeader(value.data());
+  const tfs_inode_header* iheader = GetInodeHeader(value);
   if (fd >= 0) {
     close(fd);
   }
@@ -511,6 +511,11 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
     } else {
       UpdateInlineData(handle->value, buf, offset, size);
       ret = size;
+      if(has_larger_size){
+        tfs_inode_header new_iheader = *GetInodeHeader(handle->value);
+        new_iheader.fstat.st_size = offset + size;
+        UpdateInodeHeader(handle->value, new_iheader);
+      }
       int res = db_->Put(key.ToSlice(), handle->value);
       if(res != 0){
         return -EDBERROR;
