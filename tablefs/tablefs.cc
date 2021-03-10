@@ -661,7 +661,7 @@ int TableFS::Readlink(const char * path ,char * buf,size_t size){
 }
 
 int TableFS::Symlink(const char * target , const char * path){
-  KVFS_LOG("Symlink:not implement");
+  KVFS_LOG("Symlink:not implement%s %s", target, path);
   return -ENOTIMPLEMENT;
 }
 
@@ -815,7 +815,7 @@ int TableFS::ReleaseDir(const char * path,struct fuse_file_info * fi){
 
 int TableFS::RemoveDir(const char * path){
   //感觉要删除整个目录的所有文件
-  KVFS_LOG("RemoveDir:not implement");
+  KVFS_LOG("RemoveDir:not implement:%s", path);
   return -ENOTIMPLEMENT;
 }
 
