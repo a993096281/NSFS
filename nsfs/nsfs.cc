@@ -690,6 +690,7 @@ int NSFS::Symlink(const char * target , const char * path){
 }
 
 int NSFS::Unlink(const char * path){
+  KVFS_LOG("Unlink:%s \n", path);
   inode_id_t key;
   inode_id_t parent_id;
   string fname;

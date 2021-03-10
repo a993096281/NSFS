@@ -666,6 +666,7 @@ int TableFS::Symlink(const char * target , const char * path){
 }
 
 int TableFS::Unlink(const char * path){
+  KVFS_LOG("Unlink:%s \n", path);
   tfs_meta_key_t key;
   if (!PathLookup(path, key)) {
     KVFS_LOG("Unlink: No such file or directory %s\n", path);
