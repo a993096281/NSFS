@@ -332,8 +332,8 @@ string NSFS::InitInodeValue(inode_id_t inum, mode_t mode, dev_t dev) {
     string value(value_size, '\0');
 
     tfs_inode_header header;
-    InitStat(header->fstat, inum, mode, dev);
-    header->has_blob = 0;
+    InitStat(header.fstat, inum, mode, dev);
+    header.has_blob = 0;
     UpdateInodeHeader(value, header);
     return value;
 }

@@ -78,7 +78,7 @@ protected:
     inline bool PathLookup(const char *path, inode_id_t &key);
     inline bool PathLookup(const char *path, inode_id_t &key, inode_id_t &parent_id, string &fname);
     inline bool ParentPathLookup(const char *path, inode_id_t &parent_id, string &fname);
-    string InitInodeValue(inode_id_t inum, mode_t mode, dev_t dev)
+    string InitInodeValue(inode_id_t inum, mode_t mode, dev_t dev);
 
     kvfs_file_handle * InitFileHandle(const char * path, struct fuse_file_info * fi, const inode_id_t & key , const std::string & value );
     string GetDiskFilePath(const inode_id_t &inode_id);
