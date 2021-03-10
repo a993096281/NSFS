@@ -331,9 +331,10 @@ string NSFS::InitInodeValue(inode_id_t inum, mode_t mode, dev_t dev) {
     int value_size = TFS_INODE_HEADER_SIZE;
     string value(value_size, '\0');
 
-    tfs_inode_header* header = reinterpret_cast<tfs_inode_header*>(value.data());
+    tfs_inode_header header;
     InitStat(header->fstat, inum, mode, dev);
     header->has_blob = 0;
+    UpdateInodeHeader(value, header);
     return value;
 }
 
@@ -501,8 +502,8 @@ int NSFS::Write(const char * path , const char * buf,size_t size ,off_t offset ,
       //0 .copy inline data 
       char * buffer = new char[ offset + size];
 
-      const char * inline_data = handle->value.data() + TFS_INODE_HEADER_SIZE + header->namelen + 1;
-      int inline_data_size = handle->value.size() - (TFS_INODE_HEADER_SIZE + header->namelen + 1);
+      const char * inline_data = handle->value.data() + TFS_INODE_HEADER_SIZE;
+      int inline_data_size = handle->value.size() - TFS_INODE_HEADER_SIZE;
       
       memcpy(buffer, inline_data, inline_data_size);
       //1 . write data to buffer
@@ -565,10 +566,10 @@ int NSFS::Truncate(const char * path ,off_t offset, struct fuse_file_info *fi){
 
       if (iheader->has_blob > 0) {
         if (new_size > config_->GetThreshold()) {
-          TruncateDiskFile(key, iheader->fstat.st_ino, new_size);
+          TruncateDiskFile(key,new_size);
         } else {
           char* buffer = new char[new_size];
-          MigrateDiskFileToBuffer(key, iheader->fstat.st_ino, buffer, new_size);
+          MigrateDiskFileToBuffer(key, buffer, new_size);
           UpdateInlineData(value, buffer, 0, new_size);
           delete [] buffer;
         }
@@ -807,7 +808,7 @@ int NSFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t off
   inode_id_t key = handle->key;
   int ret = 0;
   
-  Iterator* iter = db_->NewIterator(key);
+  Iterator* iter = db_->DirGetIterator(key);
   if (filler(buf, ".", NULL, 0, (enum fuse_fill_dir_flags) 0) < 0) {
     KVFS_LOG("filler . error\n");
     return -errno;

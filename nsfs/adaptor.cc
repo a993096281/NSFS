@@ -43,38 +43,6 @@ int DBAdaptor::Init(const std::string & path){
     }
 }
 
-int DBAdaptor::Get(const leveldb::Slice &key, std::string &result){
-    ReadOptions options;
-    Status s = db_->Get(options, key, &result);
-    
-    if(s.ok()){
-        return 0;
-    } else if(s.IsNotFound()) {
-        return 1;
-    } else {
-        return -1;
-    }
-}
-
-int DBAdaptor::Put(const leveldb::Slice &key, const leveldb::Slice &values){
-    WriteOptions write_options;
-    leveldb::Status s = db_->Put(write_options, key, values);
-    if(s.ok()){
-        return 0;
-    } else {
-        return -1;
-    }
-}
-
-int DBAdaptor::Delete(const leveldb::Slice &key){
-    WriteOptions write_options;
-    leveldb::Status s = db_->Delete(write_options, key);
-    if(s.ok()){
-        return 0;
-    } else {
-        return -1;
-    }
-}
 int DBAdaptor::Sync(){
     return 0;
 }

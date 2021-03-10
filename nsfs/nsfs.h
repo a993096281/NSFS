@@ -80,12 +80,12 @@ protected:
     inline bool ParentPathLookup(const char *path, inode_id_t &parent_id, string &fname);
     string InitInodeValue(inode_id_t inum, mode_t mode, dev_t dev)
 
-    kvfs_file_handle * InitFileHandle(const char * path, struct fuse_file_info * fi, const tfs_meta_key_t & key , const std::string & value );
+    kvfs_file_handle * InitFileHandle(const char * path, struct fuse_file_info * fi, const inode_id_t & key , const std::string & value );
     string GetDiskFilePath(const inode_id_t &inode_id);
     int OpenDiskFile(const inode_id_t &key, const tfs_inode_header* iheader, int flags);
     int TruncateDiskFile(const inode_id_t &key, off_t new_size);
     ssize_t MigrateDiskFileToBuffer(const inode_id_t &key, char* buffer, size_t size);
-    int MigrateToDiskFile(const tfs_meta_key_t &key, string &value, int &fd, int flags);
+    int MigrateToDiskFile(const inode_id_t &key, string &value, int &fd, int flags);
 
 
     DBAdaptor * db_;
