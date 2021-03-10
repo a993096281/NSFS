@@ -1,6 +1,6 @@
 set $dir=/home/lzw/fs/mnt
-set $nfiles=50
-set $meandirwidth=5
+set $nfiles=5
+set $meandirwidth=1
 set $nthreads=1
 
 define fileset name=bigfileset,path=$dir,size=0,entries=$nfiles,dirwidth=$meandirwidth,prealloc
@@ -15,3 +15,4 @@ define process name=fileopen,instances=1
 }
 
 echo  "Openfiles Version 1.0 personality successfully loaded"
+run 10
