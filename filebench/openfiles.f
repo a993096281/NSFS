@@ -1,4 +1,4 @@
-set $dir=/home/lzw/fs/mnt
+set $dir=/pmem0/fs/mnt
 set $nfiles=5
 set $meandirwidth=1
 set $nthreads=1
@@ -15,4 +15,4 @@ define process name=fileopen,instances=1
 }
 
 echo  "Openfiles Version 1.0 personality successfully loaded"
-run 10
+run 20

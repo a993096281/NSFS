@@ -1,8 +1,8 @@
 #! /bin/sh
 
-mountdir="/home/lzw/fs/mnt"
-metadir="/home/lzw/fs/meta"
-datadir="/home/lzw/fs/data"
+mountdir="/pmem0/fs/mnt"
+metadir="/pmem0/fs/meta"
+datadir="/pmem0/fs/data"
 
 if [ -n "$metadir" ];then
     rm -f $metadir/*

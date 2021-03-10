@@ -114,7 +114,7 @@ struct kvfs_file_handle
 uint64_t murmur64( const void * key, int len, uint64_t seed = 123 );
 
 
-#define KVFSDEBUG
+//#define KVFSDEBUG
 
 #ifndef KVFSDEBUG
 #define KVFS_LOG(...)

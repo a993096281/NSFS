@@ -22,9 +22,9 @@ int DBAdaptor::Init(const std::string & path){
 
     Option option;
     option.node_allocator_path = path + "/" + "node.pool";
-    option.node_allocator_size = 2ULL * 1024 * 1024 * 1024;
+    option.node_allocator_size = 20ULL * 1024 * 1024 * 1024;
     option.file_allocator_path = path + "/" + "file.pool";
-    option.file_allocator_size = 2ULL * 1024 * 1024 * 1024;
+    option.file_allocator_size = 20ULL * 1024 * 1024 * 1024;
     
 
     if( path == "")

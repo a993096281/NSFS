@@ -1,7 +1,7 @@
 #
 # Creates a directory with $ndirs potential leaf directories, than mkdir's them
 #
-set $dir=/tmp
+set $dir=/pmem0/fs/mnt
 set $ndirs=10
 set $meandirwidth=1
 set $nthreads=1
@@ -20,4 +20,4 @@ define process name=dirmake,instances=1
 
 echo  "MakeDirs Version 1.0 personality successfully loaded"
 
-run 10
+run 20
