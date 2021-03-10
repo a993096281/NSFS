@@ -9,7 +9,7 @@ LIB_SOURCES =  \
 	adaptor.cc  \
 	config.cc  \
 	inode_format.cc  \
-	tablefs.cc  
+	nsfs.cc  
 	
 
 
@@ -21,10 +21,11 @@ FUSE_INCLUDE = `pkg-config fuse3 --cflags`
 FUSE_LIBRARY = `pkg-config fuse3 --libs`
 
 
-LIBRARY = libtablefs.a
+LIBRARY = libnsfs.a
 
-LEVELDB_LIBRARY = ../lib/leveldb_v1.20/out-static/libleveldb.a
-LEVELDB_INCLUDE = -I../lib/leveldb_v1.20/include
+
+METADB_LIBRARY = ../metadb/libmetadb.a -lpmem
+METADB_INCLUDE = -I../metadb/include
 
 .PHONY: clean
 default:  all
@@ -33,17 +34,17 @@ all:  clean $(LIBOBJECTS)
 
 clean: 
 	rm -f $(LIBOBJECTS)
-	rm -f tablefs_main
+	rm -f nsfs_main
 	
 
 $(LIBOBJECTS): 
 	for sou_file in $(TARGET_OBJS) ; do \
-	$(CXX) $(CFLAGS) $(LDFLAGS) $(LEVELDB_INCLUDE) $(FUSE_INCLUDE) -c $$sou_file.cc -o $$sou_file.o; \
+	$(CXX) $(CFLAGS) $(LDFLAGS) $(METADB_INCLUDE) $(FUSE_INCLUDE) -c $$sou_file.cc -o $$sou_file.o; \
 	done;
 
 $(LIBRARY) : $(LIBOBJECTS)
 	rm -f $@
 	$(AR) $(ARFLAGS) $@ $^
 
-tablefs_main: clean $(LIBOBJECTS)
-	$(CXX) $(CFLAGS) tablefs_main.cc $(LIBOBJECTS) $(LEVELDB_INCLUDE) $(LEVELDB_LIBRARY) $(FUSE_INCLUDE) $(FUSE_LIBRARY) -o tablefs_main $(LDFLAGS);
+nsfs_main: clean $(LIBOBJECTS)
+	$(CXX) $(CFLAGS) nsfs_main.cc $(LIBOBJECTS) $(METADB_INCLUDE) $(METADB_LIBRARY) $(FUSE_INCLUDE) $(FUSE_LIBRARY) -o nsfs_main $(LDFLAGS);

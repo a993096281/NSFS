@@ -184,6 +184,95 @@ bool NSFS::PathLookup(const char *path,
   return true;
     
 }
+bool NSFS::PathLookup(const char *path, inode_id_t &key, inode_id_t &parent_id, string &fname) {
+
+  const char* lpos = path;
+  const char* rpos;
+  bool flag_found = true;
+  parent_id = ROOT_INODE_ID;
+  while ((rpos = strchr(lpos+1, PATH_DELIMITER)) != NULL) {
+      if (rpos - lpos > 0) {
+          fname.assign(lpos+1, rpos-lpos-1);
+          
+          int ret = db_->DirGet(parent_id, fname, key);
+          if (ret == 0) {
+              parent_id = key;
+          } else if (ret == 1){
+              errno = ENOENT;
+              flag_found = false;
+          } else{
+              errno = EDBERROR;
+              flag_found = false;
+          }
+          
+          if (!flag_found) {
+              return false;
+          }
+      }
+      lpos = rpos;
+  }
+  rpos = strchr(lpos, '\0');
+  if (rpos != NULL && rpos-lpos > 1) {  //最后一个文件名
+    fname.assign(lpos+1, rpos-lpos-1);
+    int ret = db_->DirGet(parent_id, fname, key);
+    if (ret == 0) {
+        return true;
+    } else if (ret == 1){
+        errno = ENOENT;
+        flag_found = false;
+    } else{
+        errno = EDBERROR;
+        flag_found = false;
+    }
+    
+    if (!flag_found) {
+        return false;
+    }
+  }
+
+  if (lpos == path) {  //说明是“/”
+      key = ROOT_INODE_ID;
+  }
+  return true;
+    
+}
+
+bool NSFS::ParentPathLookup(const char *path, inode_id_t &parent_id, string &fname) {
+
+  const char* lpos = path;
+  const char* rpos;
+  bool flag_found = true;
+  parent_id = ROOT_INODE_ID;
+  inode_id_t key;
+  while ((rpos = strchr(lpos+1, PATH_DELIMITER)) != NULL) {
+      if (rpos - lpos > 0) {
+          fname.assign(lpos+1, rpos-lpos-1);
+          
+          int ret = db_->DirGet(parent_id, fname, key);
+          if (ret == 0) {
+              parent_id = key;
+          } else if (ret == 1){
+              errno = ENOENT;
+              flag_found = false;
+          } else{
+              errno = EDBERROR;
+              flag_found = false;
+          }
+          
+          if (!flag_found) {
+              return false;
+          }
+      }
+      lpos = rpos;
+  }
+  rpos = strchr(lpos, '\0');
+  if (rpos != NULL && rpos-lpos > 1) {  //最后一个文件名
+    fname.assign(lpos+1, rpos-lpos-1);
+  }
+
+  return true;
+    
+}
 
 string NSFS::GetDiskFilePath(const inode_id_t &inode_id){
   string path = config_->GetDataDir() + "/" + std::to_string(inode_id);
@@ -601,7 +690,9 @@ int NSFS::Symlink(const char * target , const char * path){
 
 int NSFS::Unlink(const char * path){
   inode_id_t key;
-  if (!PathLookup(path, key)) {
+  inode_id_t parent_id;
+  string fname;
+  if (!PathLookup(path, key, parent_id, fname)) {
     KVFS_LOG("Unlink: No such file or directory %s\n", path);
     return -errno;
   }
@@ -616,7 +707,11 @@ int NSFS::Unlink(const char * path){
       unlink(fpath.c_str());
     }
     kvfs_file_handle::DeleteHandle(key);
-    int res = db_->InodeDelete(key);
+    int res = db_->DirDelete(parent_id, fname);
+    if(res != 0){
+      return -EDBERROR;
+    }
+    res = db_->InodeDelete(key);
     if(res != 0){
       return -EDBERROR;
     }
@@ -631,46 +726,49 @@ int NSFS::Unlink(const char * path){
 
 int NSFS::MakeNode(const char * path,mode_t mode ,dev_t dev){
   KVFS_LOG("MakeNode:%s", path);
-  inode_id_t key;
-  Slice filename;
-  if (!PathLookup(path, key, filename)) {
+  inode_id_t parent_id;
+  string filename;
+  if (!ParentPathLookup(path, parent_id, filename)) {
     KVFS_LOG("MakeNode: No such file or directory %s\n", path);
     return -errno;
   }
+  inode_id_t key = config_->NewInode();
 
-  tfs_inode_val_t value = InitInodeValue(config_->NewInode(), mode | S_IFREG, dev, filename);
-
-  int ret = 0;
+  string value = InitInodeValue(key, mode | S_IFREG, dev);
   
-  ret=db_->Put(key, value);
+  int ret=db_->DirPut(parent_id, filename, key);
   if(ret != 0){
     return -EDBERROR;
   }
-
-  FreeInodeValue(value);
+  ret = db_->InodePut(key, value);
+  if(ret != 0){
+    return -EDBERROR;
+  }
 
   return 0;
 }
 
 int NSFS::MakeDir(const char * path,mode_t mode){
   KVFS_LOG("MakeDir:%s", path);
-  inode_id_t key;
-  leveldb::Slice filename;
-  if (!PathLookup(path, key, filename)) {
+  inode_id_t parent_id;
+  string filename;
+  if (!ParentPathLookup(path, parent_id, filename)) {
     KVFS_LOG("MakeDir: No such file or directory %s\n", path);
     return -errno;
   }
 
-  tfs_inode_val_t value =
-    InitInodeValue(config_->NewInode(), mode | S_IFDIR, 0, filename);
+  inode_id_t key = config_->NewInode();
 
-  int ret = 0;
-  ret=db_->Put(key, value);
+  string value = InitInodeValue(key, mode | S_IFDIR, 0);
+
+  int ret=db_->DirPut(parent_id, filename, key);
   if(ret != 0){
     return -EDBERROR;
   }
-
-  FreeInodeValue(value);
+  ret = db_->InodePut(key, value);
+  if(ret != 0){
+    return -EDBERROR;
+  }
 
   return 0;
 }
@@ -678,16 +776,15 @@ int NSFS::MakeDir(const char * path,mode_t mode){
 int NSFS::OpenDir(const char * path,struct fuse_file_info *fi){
   KVFS_LOG("OpenDir:%s", path);
   inode_id_t key;
-  std::string inode;
   if (!PathLookup(path, key)) {
     KVFS_LOG("OpenDir: No such file or directory %s\n", path);
     return -errno;
   }
   std::string value;
   int ret = 0;
-  ret = db_->Get(key, value);
+  ret = db_->InodeGet(key, value);
   if(ret == 0){
-    kvfs_file_handle * handle = new kvfs_file_handle(path);
+    kvfs_file_handle * handle = new kvfs_file_handle(key);
     handle->fd = -1;
     handle->key = key;
     handle->flags = fi->flags;
@@ -707,13 +804,10 @@ int NSFS::OpenDir(const char * path,struct fuse_file_info *fi){
 int NSFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t offset ,struct fuse_file_info * fi, enum fuse_readdir_flags flag){
   KVFS_LOG("ReadDir:%s", path);
   kvfs_file_handle * handle = reinterpret_cast <kvfs_file_handle *>(fi->fh);
-  inode_id_t childkey;
+  inode_id_t key = handle->key;
   int ret = 0;
-  tfs_inode_t child_inumber = GetAttribute(handle->value)->st_ino;
-  BuildMetaKey(child_inumber,
-              (child_inumber == ROOT_INODE_ID) ? 1 : 0,
-              childkey);
-  Iterator* iter = db_->NewIterator();
+  
+  Iterator* iter = db_->NewIterator(key);
   if (filler(buf, ".", NULL, 0, (enum fuse_fill_dir_flags) 0) < 0) {
     KVFS_LOG("filler . error\n");
     return -errno;
@@ -722,10 +816,10 @@ int NSFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t off
     KVFS_LOG("filler .. error\n");
     return -errno;
   }
-  for (iter->Seek(childkey);
-       iter->Valid() && IsKeyInDir(iter->key(), childkey);
-       iter->Next()) {
-    const char* name_buffer = iter->value().data() + TFS_INODE_HEADER_SIZE;
+  for (iter->SeekToFirst(); iter->Valid(); iter->Next()) {
+    string fname = iter->fname();
+    fname += '\0';
+    const char* name_buffer = fname.data();
     if (name_buffer[0] == '\0') {
         continue;
     }
@@ -742,8 +836,9 @@ int NSFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t off
 
 int NSFS::ReleaseDir(const char * path,struct fuse_file_info * fi){
   KVFS_LOG("ReleaseDir:%s", path);
-  //kvfs_file_handle * handle = reinterpret_cast <kvfs_file_handle *>(fi->fh);
-  kvfs_file_handle::DeleteHandle(path);
+  kvfs_file_handle * handle = reinterpret_cast <kvfs_file_handle *>(fi->fh);
+  inode_id_t key = handle->key;
+  kvfs_file_handle::DeleteHandle(key);
   return 0;
 }
 
@@ -756,39 +851,29 @@ int NSFS::RemoveDir(const char * path){
 int NSFS::Rename(const char *new_path,const char * old_path, unsigned int flags){
   KVFS_LOG("Rename:%s %s", new_path, old_path);
   inode_id_t old_key;
-  if (!PathLookup(old_path, old_key)) {
+  inode_id_t old_parent_key;
+  string old_fname;
+  if (!PathLookup(old_path, old_key, old_parent_key, old_fname)) {
     KVFS_LOG("OpenDir: No such file or directory %s\n", old_path);
     return -errno;
   }
-  inode_id_t new_key;
-  leveldb::Slice filename;
-  if (!PathLookup(new_path, new_key, filename)) {
+  inode_id_t new_key = old_key;
+  inode_id_t new_parent_key;
+  string new_fname;
+  if (!ParentPathLookup(new_path, new_parent_key, new_fname)) {
     KVFS_LOG("OpenDir: No such file or directory %s\n", new_path);
     return -errno;
   }
-
-  std::string old_value;
-  int ret = 0;
-  ret = db_->Get(old_key, old_value);
-  if(ret == 0){
-    const tfs_inode_header *iheader = reinterpret_cast<const tfs_inode_header *>(old_value.data());
-    std::string new_value = InitInodeValue(old_value, filename);
-    ret=db_->Put(new_key, new_value);
-    if(ret != 0){
-      return -EDBERROR;
-    }
-    ret = db_->Delete(old_key);
-    if(ret != 0){
-      return -EDBERROR;
-    }
-    kvfs_file_handle::DeleteHandle(old_path);
-    kvfs_file_handle::DeleteHandle(new_path);
-    return 0;
-  } else if(ret == 1){
-    return -ENOENT;
-  } else{
+  int ret = db_->DirPut(new_parent_key, new_fname,new_key);
+  if(ret != 0){
     return -EDBERROR;
   }
+  ret = db_->DirDelete(old_parent_key,old_fname);
+  if(ret != 0){
+    return -EDBERROR;
+  }
+  kvfs_file_handle::DeleteHandle(old_key);
+  return 0;
 
 }
 
@@ -807,9 +892,9 @@ int NSFS::Chmod(const char * path , mode_t mode, struct fuse_file_info *fi){
   }
   std::string value;
   int ret = 0;
-  ret = db_->Get(key, value);
+  ret = db_->InodeGet(key, value);
   if(ret == 0){
-    kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(path);
+    kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(key);
     string *mu_value = nullptr;
     if(nullptr != handle){
       mu_value = &(handle->value);
@@ -820,7 +905,7 @@ int NSFS::Chmod(const char * path , mode_t mode, struct fuse_file_info *fi){
     tfs_stat_t new_value = *st_value;
     new_value.st_mode = mode;
     UpdateAttribute(*mu_value, new_value);
-    ret=db_->Put(key, *mu_value);
+    ret=db_->InodePut(key, *mu_value);
     if(ret != 0){
       return -EDBERROR;
     }
@@ -842,9 +927,9 @@ int NSFS::Chown(const char * path, uid_t uid,gid_t gid, struct fuse_file_info *f
   }
   std::string value;
   int ret = 0;
-  ret = db_->Get(key, value);
+  ret = db_->InodeGet(key, value);
   if(ret == 0){
-    kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(path);
+    kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(key);
     string *mu_value = nullptr;
     if(nullptr != handle){
       mu_value = &(handle->value);
@@ -856,7 +941,7 @@ int NSFS::Chown(const char * path, uid_t uid,gid_t gid, struct fuse_file_info *f
     new_value.st_uid = uid;
     new_value.st_gid = gid;
     UpdateAttribute(*mu_value, new_value);
-    ret=db_->Put(key, *mu_value);
+    ret=db_->InodePut(key, *mu_value);
     if(ret != 0){
       return -EDBERROR;
     }
@@ -877,9 +962,9 @@ int NSFS::UpdateTimens(const char * path ,const struct timespec tv[2], struct fu
   }
   std::string value;
   int ret = 0;
-  ret = db_->Get(key, value);
+  ret = db_->InodeGet(key, value);
   if(ret == 0){
-    kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(path);
+    kvfs_file_handle * handle = kvfs_file_handle ::GetHandle(key);
     string *mu_value = nullptr;
     if(nullptr != handle){
       mu_value = &(handle->value);
@@ -893,7 +978,7 @@ int NSFS::UpdateTimens(const char * path ,const struct timespec tv[2], struct fu
     new_value.st_mtim.tv_sec = tv[1].tv_sec;
     new_value.st_mtim.tv_nsec = tv[1].tv_nsec;
     UpdateAttribute(*mu_value, new_value);
-    ret=db_->Put(key, *mu_value);
+    ret=db_->InodePut(key, *mu_value);
     if(ret != 0){
       return -EDBERROR;
     }

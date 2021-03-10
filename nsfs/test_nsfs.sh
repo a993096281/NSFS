@@ -12,7 +12,7 @@ if [ -n "$datadir" ];then
     rm -f $datadir/*
 fi
 
-cmd="./tablefs_main -mount_dir $mountdir -meta_dir $metadir -data_dir $datadir"
+cmd="./nsfs_main -mount_dir $mountdir -meta_dir $metadir -data_dir $datadir"
 
 echo $cmd
 eval $cmd
