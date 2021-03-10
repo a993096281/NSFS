@@ -817,6 +817,9 @@ int NSFS::ReadDir(const char * path,void * buf ,fuse_fill_dir_t filler,off_t off
     KVFS_LOG("filler .. error\n");
     return -errno;
   }
+  if(iter == nullptr){
+    return 0;
+  }
   for (iter->SeekToFirst(); iter->Valid(); iter->Next()) {
     string fname = iter->fname();
     fname += '\0';
