@@ -815,9 +815,29 @@ int TableFS::ReleaseDir(const char * path,struct fuse_file_info * fi){
 }
 
 int TableFS::RemoveDir(const char * path){
-  //感觉要删除整个目录的所有文件
-  KVFS_LOG("RemoveDir:not implement:%s", path);
-  return -ENOTIMPLEMENT;
+  //只能删除一个空目录
+  KVFS_LOG("RemoveDir:%s", path);
+  tfs_meta_key_t key;
+  if (!PathLookup(path, key)) {
+    KVFS_LOG("Unlink: No such file or directory %s\n", path);
+    return -errno;
+  }
+  std::string value;
+  int ret = 0;
+  ret = db_->Get(key.ToSlice(), value);
+  if(ret == 0){
+    kvfs_file_handle::DeleteHandle(path);
+    int res = db_->Delete(key.ToSlice());
+    if(res != 0){
+      return -EDBERROR;
+    }
+
+    return 0;
+  } else if(ret == 1){
+    return -ENOENT;
+  } else{
+    return -EDBERROR;
+  }
 }
 
 int TableFS::Rename(const char *new_path,const char * old_path, unsigned int flags){

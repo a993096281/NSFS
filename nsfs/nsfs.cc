@@ -849,8 +849,34 @@ int NSFS::ReleaseDir(const char * path,struct fuse_file_info * fi){
 
 int NSFS::RemoveDir(const char * path){
   //感觉要删除整个目录的所有文件
-  KVFS_LOG("RemoveDir:not implement");
-  return -ENOTIMPLEMENT;
+  KVFS_LOG("RemoveDir:%s", path);
+  inode_id_t key;
+  inode_id_t parent_id;
+  string fname;
+  if (!PathLookup(path, key, parent_id, fname)) {
+    KVFS_LOG("Unlink: No such file or directory %s\n", path);
+    return -errno;
+  }
+  std::string value;
+  int ret = 0;
+  ret = db_->InodeGet(key, value);
+  if(ret == 0){
+    kvfs_file_handle::DeleteHandle(key);
+    int res = db_->DirDelete(parent_id, fname);
+    if(res != 0){
+      return -EDBERROR;
+    }
+    res = db_->InodeDelete(key);
+    if(res != 0){
+      return -EDBERROR;
+    }
+
+    return 0;
+  } else if(ret == 1){
+    return -ENOENT;
+  } else{
+    return -EDBERROR;
+  }
 }
 
 int NSFS::Rename(const char *new_path,const char * old_path, unsigned int flags){
