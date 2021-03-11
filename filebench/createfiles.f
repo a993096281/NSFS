@@ -1,9 +1,11 @@
 #
+# 创建 $nfiles 个文件，每个文件写$meanfilesize ，每次写 $iosize 大小，创建完 $nfiles ，结束
+#
 
 set $dir=/pmem0/fs/mnt
 set $nfiles=10
 set $meandirwidth=10000000
-set $meanfilesize=0
+set $meanfilesize=1k
 set $iosize=1k
 set $nthreads=1
 
@@ -16,7 +18,7 @@ define process name=filecreate,instances=1
   thread name=filecreatethread,memsize=10m,instances=$nthreads
   {
     flowop createfile name=createfile1,filesetname=bigfileset,fd=1
-    flowop writewholefile name=writefile1,fd=1,iosize=$iosize
+    flowop writewholefile name=writefile1,fd=1,iosize=$iosize,dsync
     flowop closefile name=closefile1,fd=1
   }
 }

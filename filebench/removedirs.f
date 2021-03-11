@@ -2,7 +2,7 @@
 # Creates a fileset with $ndirs empty leaf directories then rmdir's all of them
 #
 
-set $dir=/tmp
+set $dir=/pmem0/fs/mnt
 set $ndirs=125
 set $meandirwidth=5
 set $nthreads=1

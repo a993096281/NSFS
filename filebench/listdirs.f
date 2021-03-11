@@ -2,7 +2,8 @@
 # Creates a fileset with a fairly deep directory tree, then does readdir
 # operations on them for a specified amount of time
 #
-#
+# depth = 3, 5, 7, 9,
+# meandirwidth=100, 16, 7, 5
 
 set $dir=/pmem0/fs/mnt
 set $nfiles=81
