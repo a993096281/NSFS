@@ -8,7 +8,7 @@
 
 #define FUSE_USE_VERSION 35
 
-#define _XOPEN_SOURCE 500
+//#define _XOPEN_SOURCE 500
 
 #include <limits.h>
 #include <stdio.h>

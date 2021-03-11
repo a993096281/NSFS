@@ -3,7 +3,7 @@
   http://www.cs.nmsu.edu/~pfeiffer/fuse-tutorial.tgz
 */
 
-#include "config.h"
+//#include "config.h"
 #include "params.h"
 
 #include <ctype.h>
@@ -727,12 +727,12 @@ int main(int argc, char *argv[])
     // internal data
     general_data->rootdir = realpath(argv[argc-2], NULL);
     argv[argc-2] = argv[argc-1];
-    argv[argc-1] = NULL;
-    argc--;
+    char fuse_opt_s[20]="-s";
+    argv[argc-1] = fuse_opt_s;
     
     general_data->logfile = log_open();
     // turn over control to fuse
-    fprintf(stderr, "about to call fuse_main\n");
+    //fprintf(stderr, "about to call fuse_main\n");
     fuse_stat = fuse_main(argc, argv, &general_oper, general_data);
     fprintf(stderr, "fuse_main returned %d\n", fuse_stat);
     
