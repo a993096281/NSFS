@@ -200,7 +200,7 @@ int general_utime(const char *path, const struct timespec tv[2], struct fuse_fil
     char fpath[PATH_MAX];
     //log_msg("\ngeneral_utime(path=\"%s\", ubuf=0x%08x)\n", path, ubuf);
     general_fullpath(fpath, path);
-    return log_syscall("utime", futimens(fi->fd, tv), 0);
+    return log_syscall("utime", futimens(fi->fh, tv), 0);
 }
 
 /** File open operation
@@ -639,30 +639,30 @@ int general_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi)
  *
  * Introduced in version 2.5
  */
-int general_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *fi)
-{
-    int retstat = 0;
+// int general_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *fi)
+// {
+//     int retstat = 0;
     
-    //log_msg("\ngeneral_fgetattr(path=\"%s\", statbuf=0x%08x, fi=0x%08x)\n", path, statbuf, fi);
-    log_fi(fi);
+//     //log_msg("\ngeneral_fgetattr(path=\"%s\", statbuf=0x%08x, fi=0x%08x)\n", path, statbuf, fi);
+//     log_fi(fi);
 
-    // On FreeBSD, trying to do anything with the mountpoint ends up
-    // opening it, and then using the FD for an fgetattr.  So in the
-    // special case of a path of "/", I need to do a getattr on the
-    // underlying root directory instead of doing the fgetattr().
-    if (!strcmp(path, "/"))
-		return general_getattr(path, statbuf);
-    retstat = fstat(fi->fh, statbuf);
-    if (retstat < 0)
-	retstat = log_error("general_fgetattr fstat");
-    log_stat(statbuf);
-    return retstat;
-}
+//     // On FreeBSD, trying to do anything with the mountpoint ends up
+//     // opening it, and then using the FD for an fgetattr.  So in the
+//     // special case of a path of "/", I need to do a getattr on the
+//     // underlying root directory instead of doing the fgetattr().
+//     if (!strcmp(path, "/"))
+// 		return general_getattr(path, statbuf);
+//     retstat = fstat(fi->fh, statbuf);
+//     if (retstat < 0)
+// 	retstat = log_error("general_fgetattr fstat");
+//     log_stat(statbuf);
+//     return retstat;
+// }
 
 struct fuse_operations general_oper = {
   .getattr = general_getattr,
   .readlink = general_readlink,
-  .getdir = NULL,
+  //.getdir = NULL,
   .mknod = general_mknod,
   .mkdir = general_mkdir,
   .unlink = general_unlink,
@@ -695,7 +695,7 @@ struct fuse_operations general_oper = {
   .fsyncdir = general_fsyncdir,
   .init = general_init,
   .destroy = general_destroy,
-  .access = general_access,
+  .access = general_access
   //.ftruncate = general_ftruncate,
   //.fgetattr = general_fgetattr
 };
