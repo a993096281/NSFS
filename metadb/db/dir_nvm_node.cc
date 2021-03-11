@@ -463,7 +463,7 @@ int LinkNodeInsert(LinkListOp &op, LinkNode *cur, const inode_id_t key, const Sl
 
             if(!IS_INVALID_POINTER(cur->next)){
                 LinkNode *next_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->next));
-                next_node->SetPrevPersist(NODE_GET_OFFSET(res[res_size - 1]));
+                next_node->SetPrevPersist(res[res_size - 1]);
             }
             if(!IS_INVALID_POINTER(cur->prev)){
                 LinkNode *prev_node = static_cast<LinkNode *>(NODE_GET_POINTER(cur->prev));
