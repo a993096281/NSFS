@@ -18,6 +18,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>  
 
 #ifdef HAVE_SYS_XATTR_H
 #include <sys/xattr.h>
@@ -38,7 +39,7 @@ static void general_fullpath(char fpath[PATH_MAX], const char *path)
  * ignored.  The 'st_ino' field is ignored except if the 'use_ino'
  * mount option is given.
  */
-int general_getattr(const char *path, struct stat *statbuf)
+int general_getattr(const char *path, struct stat *statbuf, struct fuse_file_info *fi)
 {
     int retstat;
     char fpath[PATH_MAX];
@@ -145,7 +146,7 @@ int general_symlink(const char *path, const char *link)
 
 /** Rename a file */
 // both path and newpath are fs-relative
-int general_rename(const char *path, const char *newpath)
+int general_rename(const char *path, const char *newpath, unsigned int flags)
 {
     char fpath[PATH_MAX];
     char fnewpath[PATH_MAX];
@@ -166,7 +167,7 @@ int general_link(const char *path, const char *newpath)
 }
 
 /** Change the permission bits of a file */
-int general_chmod(const char *path, mode_t mode)
+int general_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
     char fpath[PATH_MAX];
     //log_msg("\ngeneral_chmod(fpath=\"%s\", mode=0%03o)\n", path, mode);
@@ -175,7 +176,7 @@ int general_chmod(const char *path, mode_t mode)
 }
 
 /** Change the owner and group of a file */
-int general_chown(const char *path, uid_t uid, gid_t gid)
+int general_chown(const char *path, uid_t uid, gid_t gid, struct fuse_file_info *fi)
   
 {
     char fpath[PATH_MAX];
@@ -185,7 +186,7 @@ int general_chown(const char *path, uid_t uid, gid_t gid)
 }
 
 /** Change the size of a file */
-int general_truncate(const char *path, off_t newsize)
+int general_truncate(const char *path, off_t newsize, struct fuse_file_info *fi)
 {
     char fpath[PATH_MAX];
     //log_msg("\ngeneral_truncate(path=\"%s\", newsize=%lld)\n", path, newsize);
@@ -194,12 +195,12 @@ int general_truncate(const char *path, off_t newsize)
 }
 
 /** Change the access and/or modification times of a file */
-int general_utime(const char *path, struct utimbuf *ubuf)
+int general_utime(const char *path, const struct timespec tv[2], struct fuse_file_info *fi)
 {
     char fpath[PATH_MAX];
     //log_msg("\ngeneral_utime(path=\"%s\", ubuf=0x%08x)\n", path, ubuf);
     general_fullpath(fpath, path);
-    return log_syscall("utime", utime(fpath, ubuf), 0);
+    return log_syscall("utime", futimens(fi->fd, tv), 0);
 }
 
 /** File open operation
@@ -245,7 +246,7 @@ int general_open(const char *path, struct fuse_file_info *fi)
  */
 int general_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    int retstat = 0;
+    //int retstat = 0;
     //log_msg("\ngeneral_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n", path, buf, size, offset, fi);
     // no need to get fpath on this one, since I work from fi->fh not the path
     log_fi(fi);
@@ -263,7 +264,7 @@ int general_read(const char *path, char *buf, size_t size, off_t offset, struct 
 int general_write(const char *path, const char *buf, size_t size, off_t offset,
 	     struct fuse_file_info *fi)
 {
-    int retstat = 0;
+    //int retstat = 0;
     //log_msg("\ngeneral_write(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n", path, buf, size, offset, fi);
 
 	// no need to get fpath on this one, since I work from fi->fh not the path
@@ -482,7 +483,7 @@ int general_opendir(const char *path, struct fuse_file_info *fi)
  */
 
 int general_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
-	       struct fuse_file_info *fi)
+	       struct fuse_file_info *fi, enum fuse_readdir_flags flag)
 {
     int retstat = 0;
     DIR *dp;
@@ -509,7 +510,7 @@ int general_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t o
     // read the whole directory; the second means the buffer is full.
     do {
 		//log_msg("calling filler with name %s\n", de->d_name);
-		if (filler(buf, de->d_name, NULL, 0) != 0) {
+		if (filler(buf, de->d_name, NULL, 0, (enum fuse_fill_dir_flags) 0) != 0) {
 		  //log_msg("    ERROR general_readdir filler:  buffer full");
 			return -ENOMEM;
 		}
@@ -558,7 +559,7 @@ int general_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi)
  * Introduced in version 2.3
  * Changed in version 2.6
  */
-void *general_init(struct fuse_conn_info *conn)
+void *general_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
 {
     //log_msg("\ngeneral_init()\n");
     log_conn(conn);
@@ -672,7 +673,7 @@ struct fuse_operations general_oper = {
   .chmod = general_chmod,
   .chown = general_chown,
   .truncate = general_truncate,
-  .utime = general_utime,
+  .utimens = general_utime,
   .open = general_open,
   .read = general_read,
   .write = general_write,
@@ -695,8 +696,8 @@ struct fuse_operations general_oper = {
   .init = general_init,
   .destroy = general_destroy,
   .access = general_access,
-  .ftruncate = general_ftruncate,
-  .fgetattr = general_fgetattr
+  //.ftruncate = general_ftruncate,
+  //.fgetattr = general_fgetattr
 };
 
 void general_usage()

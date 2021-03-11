@@ -21,6 +21,6 @@ void log_retstat(char *func, int retstat);
 void log_stat(struct stat *si);
 void log_statvfs(struct statvfs *sv);
 int  log_syscall(char *func, int retstat, int min_ret);
-void log_utime(struct utimbuf *buf);
+//void log_utime(struct utimbuf *buf);
 
 #endif

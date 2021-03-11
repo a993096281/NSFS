@@ -6,7 +6,7 @@
 #ifndef _PARAMS_H_
 #define _PARAMS_H_
 
-#define FUSE_USE_VERSION 26
+#define FUSE_USE_VERSION 35
 
 #define _XOPEN_SOURCE 500
 
