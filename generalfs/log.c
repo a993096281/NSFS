@@ -48,6 +48,28 @@ int log_error(char *func)
     return ret;
 }
 
+void log_retstat(char *func, int retstat)
+{
+    int errsave = errno;
+    //log_msg("    %s returned %d\n", func, retstat);
+    errno = errsave;
+}
+      
+// make a system call, checking (and reporting) return status and
+// possibly logging error
+int log_syscall(char *func, int retstat, int min_ret)
+{
+    log_retstat(func, retstat);
+
+    if (retstat < min_ret) {
+	log_error(func);
+	retstat = -errno;
+    }
+
+    return retstat;
+}
+
+#ifdef FSDEBUG
 // fuse context
 void log_fuse_context(struct fuse_context *context)
 {
@@ -167,27 +189,6 @@ void log_fi (struct fuse_file_info *fi)
 	log_struct(fi, lock_owner, 0x%016llx, );
 }
 
-void log_retstat(char *func, int retstat)
-{
-    int errsave = errno;
-    //log_msg("    %s returned %d\n", func, retstat);
-    errno = errsave;
-}
-      
-// make a system call, checking (and reporting) return status and
-// possibly logging error
-int log_syscall(char *func, int retstat, int min_ret)
-{
-    log_retstat(func, retstat);
-
-    if (retstat < min_ret) {
-	log_error(func);
-	retstat = -errno;
-    }
-
-    return retstat;
-}
-
 // This dumps the info from a struct stat.  The struct is defined in
 // <bits/stat.h>; this is indirectly included from <fcntl.h>
 void log_stat(struct stat *si)
@@ -284,3 +285,11 @@ void log_statvfs(struct statvfs *sv)
 //     log_struct(buf, modtime, 0x%08lx, );
 // }
 
+#else
+void log_conn(struct fuse_conn_info *conn) {}
+void log_fi(struct fuse_file_info *fi) {}
+void log_fuse_context(struct fuse_context *context) {}
+void log_stat(struct stat *si) {}
+void log_statvfs(struct statvfs *sv) {}
+
+#endif

@@ -201,6 +201,7 @@ int general_utime(const char *path, const struct timespec tv[2], struct fuse_fil
     char fpath[PATH_MAX];
     //log_msg("\ngeneral_utime(path=\"%s\", ubuf=0x%08x)\n", path, ubuf);
     general_fullpath(fpath, path);
+    
     return log_syscall("utime", futimens(fi->fh, tv), 0);
 }
 
