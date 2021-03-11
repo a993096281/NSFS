@@ -1,6 +1,14 @@
+#
+# Creates a fileset with $nfiles empty files, then proceeds to open each one
+# and then close it.
+#
+# depth = 3, 5, 7, 9
+# meandirwidth = 100, 16, 7, 5
+#先创建好文件，然后open ， close
+
 set $dir=/pmem0/fs/mnt
-set $nfiles=5
-set $meandirwidth=1
+set $nfiles=1000000
+set $meandirwidth=100
 set $nthreads=1
 
 define fileset name=bigfileset,path=$dir,size=0,entries=$nfiles,dirwidth=$meandirwidth,prealloc

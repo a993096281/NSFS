@@ -1,9 +1,14 @@
 #
 # Creates a directory with $ndirs potential leaf directories, than mkdir's them
-#
+# 
+# depth = 3, 5, 7, 9,
+# meandirwidth=100, 16, 7, 5
+#创建目录，创建完目录就停止
+
+
 set $dir=/pmem0/fs/mnt
-set $ndirs=10
-set $meandirwidth=1
+set $ndirs=1000000
+set $meandirwidth=100
 set $nthreads=1
 
 set mode quit firstdone
