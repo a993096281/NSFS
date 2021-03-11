@@ -1,7 +1,7 @@
 #! /bin/sh
 
-realdir="/home/lzw/fs/data"
-mountdir="/home/lzw/fs/mnt"
+realdir="/pmem0/fs/data"
+mountdir="/pmem0/fs/mnt"
 
 
 if [ -n "$realdir" ];then

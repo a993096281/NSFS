@@ -1,10 +1,13 @@
 #
 # Creates a fileset with $ndirs empty leaf directories then rmdir's all of them
 #
+# depth = 3, 5, 7, 9,
+# meandirwidth=100, 16, 7, 5
+#
 
 set $dir=/pmem0/fs/mnt
 set $ndirs=125
-set $meandirwidth=5
+set $meandirwidth=100
 set $nthreads=1
 
 set mode quit firstdone

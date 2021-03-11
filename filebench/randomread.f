@@ -1,4 +1,7 @@
 
+#
+# iosize=256, 1k, 4k, 16k, 64k
+#
 
 set $dir=/pmem0/fs/mnt
 set $filesize=5g

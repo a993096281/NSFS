@@ -2,12 +2,12 @@
 # Creates a fileset with a fairly deep directory tree, then does readdir
 # operations on them for a specified amount of time
 #
-# depth = 3, 5, 7, 9,
-# meandirwidth=100, 16, 7, 5
+# 
+# meandirwidth=100, 1000, 10000, 100000
 
 set $dir=/pmem0/fs/mnt
-set $nfiles=81
-set $meandirwidth=3
+set $nfiles=1000000
+set $meandirwidth=100
 set $nthreads=1
 
 define fileset name=bigfileset,path=$dir,size=0,entries=$nfiles,dirwidth=$meandirwidth,prealloc

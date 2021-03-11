@@ -42,6 +42,7 @@ db_bench
 leveldb_bench
 tablefs_main
 nsfs_main
+generalfs
 tmp_push.sh
 
 #VS 

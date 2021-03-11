@@ -1,5 +1,5 @@
 #! /bin/sh
 
-mountdir="/home/lzw/fs/mnt"
+mountdir="/pmem0/fs/mnt"
 
 umount $mountdir

@@ -3,11 +3,14 @@
 # via a gamma distribution with the median size of 16KB ($filesize).
 # Fire off 16 threads ($nthreads), where each thread stops after
 # deleting 1000 ($count) files.
+#
+# filesize=256, 1k, 4k, 16k, 64k
+#
 
 set $dir=/pmem0/fs/mnt
-set $count=2
+set $count=1000000
 set $filesize=1k
-set $nfiles=10
+set $nfiles=1000000
 set $meandirwidth=1000000
 set $nthreads=1
 

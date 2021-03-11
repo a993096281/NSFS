@@ -1,11 +1,14 @@
 
+#
+# iosize=256, 1k, 4k, 16k, 64k
+#
 
 set $dir=/pmem0/fs/mnt
 set $filesize=5g
 set $iosize=4k
 set $nthreads=1
 set $workingset=0
-set $directio=0
+set $directio=1
 
 define file name=largefile1,path=$dir,size=$filesize,prealloc,reuse,paralloc
 
