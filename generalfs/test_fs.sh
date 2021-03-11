@@ -5,7 +5,7 @@ mountdir="/home/lzw/fs/mnt"
 
 
 if [ -n "$realdir" ];then
-    rm -f $realdir/*
+    rm -rf $realdir/*
 fi
 
 
