@@ -746,10 +746,12 @@ int NSFS::MakeNode(const char * path,mode_t mode ,dev_t dev){
   
   int ret=db_->DirPut(parent_id, filename, key);
   if(ret != 0){
+    KVFS_LOG("MakeNode dirput error: %d %s %d\n", parent_id, filename.c_str(), key);
     return -EDBERROR;
   }
   ret = db_->InodePut(key, value);
   if(ret != 0){
+    KVFS_LOG("MakeNode inodeput error: %d %s %d\n", parent_id, filename.c_str(), key);
     return -EDBERROR;
   }
 
