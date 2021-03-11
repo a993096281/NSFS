@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>  
 
+
 #ifdef HAVE_SYS_XATTR_H
 #include <sys/xattr.h>
 #endif
@@ -398,7 +399,7 @@ int general_getxattr(const char *path, const char *name, char *value, size_t siz
     //log_msg("\ngeneral_getxattr(path = \"%s\", name = \"%s\", value = 0x%08x, size = %d)\n", path, name, value, size);
     general_fullpath(fpath, path);
     retstat = log_syscall("lgetxattr", lgetxattr(fpath, name, value, size), 0);
-    if (retstat >= 0)
+    //if (retstat >= 0)
 	//log_msg("    value = \"%s\"\n", value);
     return retstat;
 }
