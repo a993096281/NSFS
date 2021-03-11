@@ -146,9 +146,11 @@ bool NSFS::PathLookup(const char *path,
           if (ret == 0) {
               inode_in_search = key;
           } else if (ret == 1){
+              KVFS_LOG("PathLookup not find:inode:%d %s %d ptr:%s\n", inode_in_search, fname.c_str(), key, lpos);
               errno = ENOENT;
               flag_found = false;
           } else{
+              KVFS_LOG("PathLookup db error:inode:%d %s %d ptr:%s\n", inode_in_search, fname.c_str(), key, lpos);
               errno = EDBERROR;
               flag_found = false;
           }
@@ -166,9 +168,13 @@ bool NSFS::PathLookup(const char *path,
     if (ret == 0) {
         return true;
     } else if (ret == 1){
+        KVFS_LOG("PathLookup not find:inode:%d %s %d ptr:%s\n", inode_in_search, fname.c_str(), key, lpos);
+
         errno = ENOENT;
         flag_found = false;
     } else{
+        KVFS_LOG("PathLookup db error:inode:%d %s %d ptr:%s\n", inode_in_search, fname.c_str(), key, lpos);
+
         errno = EDBERROR;
         flag_found = false;
     }
