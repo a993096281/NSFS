@@ -181,7 +181,7 @@ int DirHashTable::Put(const inode_id_t key, const Slice &fname, const inode_id_t
     int res = HashEntryInsertKV(version, index, key, fname, value);
 
     version->Unref();
-    PrintHashTable();
+    //PrintHashTable();
     return res;
 }
 
@@ -248,7 +248,7 @@ int DirHashTable::Get(const inode_id_t key, const Slice &fname, inode_id_t &valu
     if(res1 == 0){
         value = value1;
     }
-    PrintHashTable();
+    //PrintHashTable();
     return res1;   //
 }
 

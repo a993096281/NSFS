@@ -11,7 +11,7 @@ static inline uint64_t Random64(uint32_t *seed){
 
 void DirRandomWrite(DB* db){
     uint32_t seed = 1000;
-    uint64_t nums = 1000;
+    uint64_t nums = 10000;
 
     inode_id_t key;
     char *fname = new char[8 + 1];
@@ -20,8 +20,8 @@ void DirRandomWrite(DB* db){
     int ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
-        id = Random64(&seed) % nums;
-        key = id;
+        id = Random64(&seed) % 1000000;
+        key = 1;
         value = id;
         snprintf(fname, 8 + 1, "%0*llx", 8, id);
         DBG_LOG("put:%d key:%lu fname:%.*s value:%lx hash_fname:%lx", i, key, 8, fname, value, MurmurHash64(fname, 8));
@@ -33,7 +33,7 @@ void DirRandomWrite(DB* db){
         }
         //db->PrintDir();
     }
-    db->PrintDir();
+    //db->PrintDir();
     delete fname;
 }
 
@@ -75,16 +75,16 @@ void DirRandomRead(DB* db){
 
 void DirRandomDelete(DB* db){
     uint32_t seed = 1000;
-    uint64_t nums = 1000;
-
+    uint64_t nums = 2000;
+    db->PrintDir();
     inode_id_t key;
     char *fname = new char[8 + 1]; 
     uint64_t id = 0;
     int ret = 0;
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
-        id = Random64(&seed) % nums;
-        key = id;
+        id = Random64(&seed) % 1000000;
+        key = 1;
         snprintf(fname, 8 + 1, "%0*llx", 8, id);
 
         ret = db->DirDelete(key, Slice(fname, 8));
@@ -211,10 +211,10 @@ int main(int argc, char *argv[])
     option.DIR_FIRST_HASH_MAX_CAPACITY = 1;
     option.INODE_MAX_ZONE_NUM = 1;
     option.INODE_HASHTABLE_INIT_SIZE = 16;
-    option.file_allocator_path = "/home/lzw/test/file.pool";
-    option.node_allocator_path = "/home/lzw/test/node.pool";
-    option.file_allocator_size = 1 * 1024 * 1024;
-    option.node_allocator_size = 1 * 1024 * 1024;
+    option.file_allocator_path = "/pmem0/test/file.pool";
+    option.node_allocator_path = "/pmem0/test/node.pool";
+    option.file_allocator_size = 1 * 1024 * 1024 * 1024;
+    option.node_allocator_size = 1 * 1024 * 1024 * 1024;
     int ret = DB::Open(option, "testdb", &db);
     if(ret != 0){
         fprintf(stderr, "open db error, Test stop\n");
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
 
     DirRandomWrite(db);
     //DirRandomRead(db);
-    //DirRandomDelete(db);
+    DirRandomDelete(db);
     //DirRandomRange(db);
 
     //InodeRandomWrite(db);
