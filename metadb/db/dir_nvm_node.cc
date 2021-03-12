@@ -2330,7 +2330,7 @@ int BptreeDelete(BptreeOp &op, const uint64_t hash_key, const Slice &fname){
                     if(first_move){
                         new_node->SetBufNodrain(new_node->len, leaf_node->buf, first_move);
                     }
-                    uint32_t second_move = new_node->len - res.leaf_key_offset - del_len;
+                    uint32_t second_move = leaf_node->len - res.leaf_key_offset - del_len;
                     if(second_move) {
                         new_node->SetBufNodrain(new_node->len + first_move, leaf_node->buf + res.leaf_key_offset + del_len, second_move);
                     }
