@@ -8,8 +8,8 @@
 
 
 set $dir=/pmem0/fs/mnt
-set $ndirs=1000000
-set $meandirwidth=100
+set $ndirs=100000
+set $meandirwidth=46
 set $nthreads=1
 
 set mode quit firstdone

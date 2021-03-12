@@ -16,7 +16,7 @@ namespace metadb {
 
 class Option {
 public:
-    uint64_t DIR_FIRST_HASH_MAX_CAPACITY = 4096;   //dir 存在的一级hash的容量
+    uint64_t DIR_FIRST_HASH_MAX_CAPACITY = 1;   //dir 存在的一级hash的容量
     uint64_t DIR_LINKNODE_TRAN_SECOND_HASH_NUM = 16;   //dir中linknode 个数超过该值，转成二级hash
     uint64_t DIR_SECOND_HASH_INIT_SIZE = 16;   //dir中转成二级hash初始大小
     double DIR_SECOND_HASH_TRIG_REHASH_TIMES = 1.5;  //dir中二级hash节点个数达到多少倍进行扩展

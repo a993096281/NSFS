@@ -7,8 +7,8 @@
 #
 
 set $dir=/pmem0/fs/mnt
-set $ndirs=125
-set $meandirwidth=100
+set $ndirs=100000
+set $meandirwidth=46
 set $nthreads=1
 
 set mode quit firstdone
@@ -24,4 +24,4 @@ define process name=remdir,instances=1
 }
 
 echo  "RemoveDir Version 1.0 personality successfully loaded"
-run 10
+run 20
