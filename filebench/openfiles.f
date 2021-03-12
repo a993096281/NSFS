@@ -3,7 +3,8 @@
 # and then close it.
 #
 # depth = 3, 5, 7, 9
-# meandirwidth = 100, 16, 7, 5
+# meandirwidth = 100, 16, 7, 5   ($nfiles=100 0000)
+# meandirwidth = 46, 10, 5, 4   ($nfiles=10 0000)
 #先创建好文件，然后open ， close
 
 set $dir=/pmem0/fs/mnt
