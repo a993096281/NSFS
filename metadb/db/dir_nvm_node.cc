@@ -1989,8 +1989,8 @@ int BptreeIndexNodeUpdateAndDelete(BptreeOp &op, BptreeSearchResult &res, uint32
     }
     if(remain_num < INDEX_NODE_TRIG_MERGE_SIZE) {  //可能需要合并
         if(level > 1){  //存在父节点才可合并
-            BptreeIndexNode *father = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(res.path[level - 1].node));
-            uint32_t father_index = res.path[level - 1].index;
+            BptreeIndexNode *father = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(res.path[level - 2].node));
+            uint32_t father_index = res.path[level - 2].index;
             if(father_index != father->num - 1){  //优先和后节点合并
                 BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index + 1].pointer));
                 if(next_node->GetFreeSpace() >= remain_num){
@@ -2149,8 +2149,8 @@ int BptreeIndexNodeDeleteEntry(BptreeOp &op, BptreeSearchResult &res, uint32_t l
     }
     if(remain_num < INDEX_NODE_TRIG_MERGE_SIZE) {  //可能需要合并
         if(level > 1){  //存在父节点才可合并
-            BptreeIndexNode *father = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(res.path[level - 1].node));
-            uint32_t father_index = res.path[level - 1].index;
+            BptreeIndexNode *father = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(res.path[level - 2].node));
+            uint32_t father_index = res.path[level - 2].index;
             if(father_index != father->num - 1){  //优先和后节点合并
                 BptreeIndexNode *next_node = static_cast<BptreeIndexNode *>(NODE_GET_POINTER(father->entry[father_index + 1].pointer));
                 if(next_node->GetFreeSpace() >= remain_num){
