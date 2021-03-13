@@ -2618,7 +2618,7 @@ void PrintLinkList(pointer_t root){
                 offset += sizeof(inode_id_t) + 8 + key_len;
             }
         }
-        if (offset != cur_node->num) throw -10;
+        if (offset != cur_node->len) throw -10;
         cur = cur_node->next;
     }
 }
