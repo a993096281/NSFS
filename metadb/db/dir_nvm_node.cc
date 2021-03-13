@@ -671,6 +671,8 @@ int LinkNodeDeleteBptree(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cu
                 if(need_move > 0) {
                     new_node->SetBufNodrain(del_offset, cur->buf + del_offset + del_len, need_move);
                 }
+                uint16_t num = cur->num - 1;
+                new_node->SetNumAndLenNodrain(num, cur->len - del_len);
                 if(res.key_index == 0){
                      //删除的是最小值
                     inode_id_t min_key;
@@ -679,7 +681,7 @@ int LinkNodeDeleteBptree(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cu
                     
                 }
                 new_node->SetBufNodrain(new_node->len, next_node->buf, next_node->len);
-                new_node->SetNumAndLenNodrain(new_node->num - 1 + next_node->num, new_node->len - del_len + next_node->len);
+                new_node->SetNumAndLenNodrain(new_node->num - 1 + next_node->num, new_node->len + next_node->len);
                 new_node->SetMaxkeyNodrain(next_node->max_key);
                 new_node->SetNextNodrain(next_node->next);
                 new_node->Flush();
