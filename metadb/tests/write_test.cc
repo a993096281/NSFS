@@ -21,7 +21,7 @@ void DirRandomWrite(DB* db){
     for(int i = 0; i < nums; i++){
         //id = Random64(&seed);
         id = Random64(&seed) % 1000000;
-        key = 1;
+        key = id;
         value = id;
         snprintf(fname, 8 + 1, "%0*llx", 8, id);
         DBG_LOG("put:%d key:%lu fname:%.*s value:%lx hash_fname:%lx", i, key, 8, fname, value, MurmurHash64(fname, 8));
