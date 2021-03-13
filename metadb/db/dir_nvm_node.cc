@@ -681,7 +681,7 @@ int LinkNodeDeleteBptree(LinkListOp &op, LinkNodeSearchResult &res, LinkNode *cu
                     
                 }
                 new_node->SetBufNodrain(new_node->len, next_node->buf, next_node->len);
-                new_node->SetNumAndLenNodrain(new_node->num - 1 + next_node->num, new_node->len + next_node->len);
+                new_node->SetNumAndLenNodrain(new_node->num + next_node->num, new_node->len + next_node->len);
                 new_node->SetMaxkeyNodrain(next_node->max_key);
                 new_node->SetNextNodrain(next_node->next);
                 new_node->Flush();
