@@ -3,10 +3,10 @@
 # operations on them for a specified amount of time
 #
 # 
-# meandirwidth=100, 1000, 10000, 100000
+# meandirwidth=10, 100, 500, 1000
 
 set $dir=/pmem0/fs/mnt
-set $nfiles=1000000
+set $nfiles=100000
 set $meandirwidth=100
 set $nthreads=1
 

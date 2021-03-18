@@ -5,8 +5,8 @@
 #
 
 set $dir=/pmem0/fs/mnt
-set $nfiles=1000000
-set $meandirwidth=1000000
+set $nfiles=100000
+set $meandirwidth=10
 set $meanfilesize=1k
 set $iosize=1k
 set $nthreads=1
@@ -26,4 +26,4 @@ define process name=filecreate,instances=1
 }
 
 echo  "Createfiles Version 3.0 personality successfully loaded"
-run 10
+run 20
