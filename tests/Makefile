@@ -1,2 +1,2 @@
 all:
-	g++ write_test.cc -o test
+	g++ file_test.cc -o test
