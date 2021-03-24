@@ -467,7 +467,13 @@ int NSFS::Read(const char * path,char * buf , size_t size ,off_t offset ,struct 
           ret = -EBADF;
       }
       if (handle->fd >= 0) {
-        ret = pread(handle->fd, buf, size, offset);
+        char * buffer;
+        int buffer_size = ((size + 4095) / 4096 ) * 4096;
+        posix_memalign((void **)&buffer, 4096, buffer_size);
+        memcpy(buffer, buf, size);
+        ret = pread(handle->fd, buffer, size, offset);
+        memcpy(buf, buffer, size);
+        delete buffer;
       }
     } else { //小文件
       ret = GetInlineData(handle->value, buf, offset, size);
@@ -490,7 +496,12 @@ int NSFS::Write(const char * path , const char * buf,size_t size ,off_t offset ,
           ret = -EBADF;
       }
       if (handle->fd >= 0) {
-        ret = pwrite(handle->fd, buf, size, offset);
+        char * buffer;
+        int buffer_size = ((size + 4095) / 4096 ) * 4096;
+        posix_memalign((void **)&buffer, 4096, buffer_size);
+        memcpy(buffer, buf, size);
+        ret = pwrite(handle->fd, buffer, size, offset);
+        delete buffer;
       }
       if (ret >= 0 && has_larger_size > 0 ) {
         tfs_inode_header new_iheader = *GetInodeHeader(handle->value);
@@ -506,7 +517,10 @@ int NSFS::Write(const char * path , const char * buf,size_t size ,off_t offset ,
     if (offset + size > config_->GetThreshold()) {  //转成大文件
       KVFS_LOG("Write :from small file to BigFile");
       //0 .copy inline data 
-      char * buffer = new char[ offset + size];
+      char * buffer;
+
+      int buffer_size = ((offset + size + 4095) / 4096 ) * 4096;
+      posix_memalign((void **)&buffer, 4096, buffer_size);
 
       const char * inline_data = handle->value.data() + TFS_INODE_HEADER_SIZE;
       int inline_data_size = handle->value.size() - TFS_INODE_HEADER_SIZE;
@@ -517,13 +531,13 @@ int NSFS::Write(const char * path , const char * buf,size_t size ,off_t offset ,
       //2. write buffer to file
       int fd = OpenDiskFile(key, header, handle->flags);
       if(fd < 0){
-        delete [] buffer;
+        delete buffer;
         return fd;
       }
       ret = pwrite(fd,buffer,offset+size,0);
       //3 . delete tmp buffer
       
-      delete [] buffer;
+      delete buffer;
       //4 . update inode 
       if(ret >= 0){
         handle->fd = fd;

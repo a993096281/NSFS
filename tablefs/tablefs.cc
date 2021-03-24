@@ -8,6 +8,7 @@
 #include "tablefs.h"
 #include <cstring>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <limits>
 #include <algorithm>
@@ -18,6 +19,12 @@
 
 using namespace std;
 namespace tablefs {
+
+static inline uint64_t get_now_micros(){
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (tv.tv_sec) * 1000000 + tv.tv_usec;
+}
 
 inline static void BuildMetaKey(const tfs_inode_t inode_id,
                                 const tfs_hash_t hash_id,
@@ -415,7 +422,13 @@ int TableFS::Read(const char * path,char * buf , size_t size ,off_t offset ,stru
           ret = -EBADF;
       }
       if (handle->fd >= 0) {
-        ret = pread(handle->fd, buf, size, offset);
+        char * buffer;
+        int buffer_size = ((size + 4095) / 4096 ) * 4096;
+        posix_memalign((void **)&buffer, 4096, buffer_size);
+        memcpy(buffer, buf, size);
+        ret = pread(handle->fd, buffer, size, offset);
+        memcpy(buf, buffer, size);
+        delete buffer;
       }
     } else { //小文件
       ret = GetInlineData(handle->value, buf, offset, size);
@@ -460,7 +473,12 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
           ret = -EBADF;
       }
       if (handle->fd >= 0) {
-        ret = pwrite(handle->fd, buf, size, offset);
+        char * buffer;
+        int buffer_size = ((size + 4095) / 4096 ) * 4096;
+        posix_memalign((void **)&buffer, 4096, buffer_size);
+        memcpy(buffer, buf, size);
+        ret = pwrite(handle->fd, buffer, size, offset);
+        delete buffer;
       }
       if (ret >= 0 && has_larger_size > 0 ) {
         tfs_inode_header new_iheader = *GetInodeHeader(handle->value);
@@ -476,7 +494,11 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
     if (offset + size > config_->GetThreshold()) {  //转成大文件
       KVFS_LOG("Write :from small file to BigFile");
       //0 .copy inline data 
-      char * buffer = new char[ offset + size];
+      char * buffer;
+
+      int buffer_size = ((offset + size + 4095) / 4096 ) * 4096;
+      posix_memalign((void **)&buffer, 4096, buffer_size);
+
 
       const char * inline_data = handle->value.data() + TFS_INODE_HEADER_SIZE + header->namelen + 1;
       int inline_data_size = handle->value.size() - (TFS_INODE_HEADER_SIZE + header->namelen + 1);
@@ -487,13 +509,13 @@ int TableFS::Write(const char * path , const char * buf,size_t size ,off_t offse
       //2. write buffer to file
       int fd = OpenDiskFile(key, header, handle->flags);
       if(fd < 0){
-        delete [] buffer;
+        delete buffer;
         return fd;
       }
       ret = pwrite(fd,buffer,offset+size,0);
       //3 . delete tmp buffer
       
-      delete [] buffer;
+      delete buffer;
       //4 . update inode 
       if(ret >= 0){
         handle->fd = fd;
